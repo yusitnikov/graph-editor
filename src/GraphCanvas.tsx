@@ -29,7 +29,7 @@ interface Props {
   onPointerLeave: () => void
 }
 
-interface DragState {
+interface DragTracking {
   fromId: NodeId
   startX: number
   startY: number
@@ -49,7 +49,10 @@ export function GraphCanvas({
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null)
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
-  const dragRef = useRef<DragState | null>(null)
+  // dragTracking is a ref for gesture state (no render needed on every move)
+  const dragTracking = useRef<DragTracking | null>(null)
+  // dragSourceId drives rendering — set to state so renders trigger correctly
+  const [dragSourceId, setDragSourceId] = useState<NodeId | null>(null)
 
   const toSvgCoords = (clientX: number, clientY: number) => {
     const svg = svgRef.current
@@ -71,36 +74,41 @@ export function GraphCanvas({
     const { x, y } = toSvgCoords(e.clientX, e.clientY)
     onPointerMove(x, y)
 
-    if (dragRef.current && !dragRef.current.dragging && state.mode === 'line-drawing') {
-      const dx = x - dragRef.current.startX
-      const dy = y - dragRef.current.startY
+    const dt = dragTracking.current
+    if (!dt) return
+
+    if (!dt.dragging && state.mode === 'line-drawing') {
+      const dx = x - dt.startX
+      const dy = y - dt.startY
       if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
-        dragRef.current.dragging = true
+        dt.dragging = true
+        setDragSourceId(dt.fromId)
       }
     }
 
-    if (dragRef.current?.dragging) {
+    if (dt.dragging) {
       const target = nodeAtPoint(x, y)
-      setHoveredNode(target !== dragRef.current.fromId ? (target ?? null) : null)
+      setHoveredNode(target !== dt.fromId ? (target ?? null) : null)
     }
   }
 
   const handleSvgPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
-    const drag = dragRef.current
-    dragRef.current = null
+    const dt = dragTracking.current
+    dragTracking.current = null
+    setDragSourceId(null)
 
-    if (!drag) return
+    if (!dt) return
 
     const { x, y } = toSvgCoords(e.clientX, e.clientY)
 
-    if (drag.dragging && state.mode === 'line-drawing') {
+    if (dt.dragging && state.mode === 'line-drawing') {
       const target = nodeAtPoint(x, y)
-      if (target && target !== drag.fromId) {
-        onNodeDragConnect(drag.fromId, target)
+      if (target && target !== dt.fromId) {
+        onNodeDragConnect(dt.fromId, target)
       }
       setHoveredNode(null)
     } else {
-      onNodeClick(drag.fromId)
+      onNodeClick(dt.fromId)
     }
   }
 
@@ -114,14 +122,14 @@ export function GraphCanvas({
     e.stopPropagation()
     ;(e.currentTarget as SVGElement).releasePointerCapture(e.pointerId)
     const { x, y } = toSvgCoords(e.clientX, e.clientY)
-    dragRef.current = { fromId: id, startX: x, startY: y, dragging: false }
+    dragTracking.current = { fromId: id, startX: x, startY: y, dragging: false }
   }
 
   const handleNodeClick = (e: React.MouseEvent) => {
     e.stopPropagation()
   }
 
-  const handleEdgePointerDown = (e: React.PointerEvent, id: string) => {
+  const handleEdgePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation()
   }
 
@@ -133,8 +141,7 @@ export function GraphCanvas({
   const nodeMap = new Map(state.nodes.map((n) => [n.id, n]))
   const { lineDrawingFrom, selection, mode } = state
 
-  const isDragging = (dragRef.current?.dragging ?? false) && mode === 'line-drawing'
-  const dragSourceId = isDragging ? dragRef.current?.fromId ?? null : null
+  const isDragging = dragSourceId !== null && mode === 'line-drawing'
   const effectiveSource = lineDrawingFrom ?? dragSourceId
   const sourceNode = effectiveSource ? nodeMap.get(effectiveSource) : null
 
@@ -150,13 +157,13 @@ export function GraphCanvas({
       onClick={handleSvgClick}
       onPointerMove={handleSvgPointerMove}
       onPointerUp={handleSvgPointerUp}
-      onPointerLeave={(e) => {
-        if (dragRef.current) {
-          dragRef.current = null
+      onPointerLeave={() => {
+        if (dragTracking.current) {
+          dragTracking.current = null
+          setDragSourceId(null)
           setHoveredNode(null)
         }
         onPointerLeave()
-        void e
       }}
     >
       {/* Edges */}
@@ -171,7 +178,7 @@ export function GraphCanvas({
             key={edge.id}
             data-interactive="true"
             style={{ cursor: 'pointer' }}
-            onPointerDown={(e) => handleEdgePointerDown(e, edge.id)}
+            onPointerDown={handleEdgePointerDown}
             onClick={(e) => handleEdgeClick(e, edge.id)}
             onPointerEnter={() => setHoveredEdge(edge.id)}
             onPointerLeave={() => setHoveredEdge(null)}
@@ -220,7 +227,7 @@ export function GraphCanvas({
         const isSelected = selection?.type === 'node' && selection.id === node.id
         const isSource = effectiveSource === node.id
         const isHovered = hoveredNode === node.id
-        const isDragTarget = isDragging && isHovered && node.id !== dragRef.current?.fromId
+        const isDragTarget = isDragging && isHovered && node.id !== dragSourceId
 
         let fill = NODE_FILL
         if (isDragTarget) fill = NODE_FILL_DRAG_TARGET

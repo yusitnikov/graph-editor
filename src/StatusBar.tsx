@@ -8,14 +8,12 @@ interface Props {
 export function StatusBar({ state }: Props) {
   const { mode, lineDrawingFrom, selection } = state
 
-  let hint = ''
-  if (mode === 'line-drawing') {
-    hint = lineDrawingFrom
-      ? 'Click another node to connect, or click the same node to cancel'
-      : 'Click a node to start drawing an edge'
-  } else {
-    hint = 'Click empty space to add a node · Click a node or edge to select it'
-  }
+  const hint =
+    mode === 'line-drawing'
+      ? lineDrawingFrom
+        ? 'Click another node to connect, or click the same node to cancel'
+        : 'Click a node to start drawing an edge'
+      : 'Click empty space to add a node · Click a node or edge to select it'
 
   const selectionLabel =
     selection?.type === 'node'
