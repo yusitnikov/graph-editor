@@ -19,7 +19,6 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement && e.target.closest('[data-toolbar]')) return
       if (e.key === 'Escape') {
         select(null)
         cancelLine()

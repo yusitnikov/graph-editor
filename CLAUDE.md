@@ -37,7 +37,7 @@ npm run preview  # preview production build
 - **Tab** — toggle between default and line-drawing modes (prevented from default browser focus behavior)
 - **Delete / Backspace** — delete the currently selected node (and its connected edges) or edge
 
-Keyboard handler lives in `App.tsx` (`useEffect` on `window`). Events from toolbar buttons (focused via `[data-toolbar]`) are ignored so Tab still works normally inside the toolbar.
+Keyboard handler lives in `App.tsx` (`useEffect` on `window`). All shortcuts work regardless of where focus is.
 
 ## Graph editor behaviour
 
