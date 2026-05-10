@@ -27,6 +27,7 @@ npm run preview  # preview production build
 
 - `src/types.ts` — shared types: `Node`, `Edge`, `GraphState`, `Mode`, `SelectionTarget`, `Viewport`
 - `src/viewport.ts` — pure functions: `toScreen`, `toWorldCoords`, `applyWheel`, `applyPan`, `applyPinch`, `fitView`. No React, no DOM side effects.
+- `src/attachPanZoom.ts` — attaches native wheel+touch listeners to an SVG element; returns a cleanup function. No React.
 - `src/useGraphState.ts` — reducer-based graph state (nodes, edges, selection, mode, line drawing)
 - `src/GraphCanvas.tsx` — SVG canvas, all pointer interaction (click, drag-to-connect, hover, pan, zoom)
 - `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + fit-view + delete. All buttons always visible; fit-view disabled when no nodes (`onFitView` prop is `null`), delete disabled when nothing selected (`selection` prop is `null`).
@@ -94,4 +95,4 @@ Keyboard handler lives in `App.tsx` (`useEffect` on `window`). All shortcuts wor
 - MUI v9 does not support shorthand system props (e.g. `mt={2}`). Always use the `sx` prop: `sx={{ mt: 2 }}`.
 - `ThemeProvider` and `CssBaseline` are set up in `App.tsx` — all components render inside that tree.
 - TypeScript is strict: `noUnusedLocals`, `noUnusedParameters`, `erasableSyntaxOnly` are enabled. No `any`, no type assertions to bypass errors.
-- After any significant feature work, update CLAUDE.md to reflect the current state of the project — do not let it go stale.
+- Update CLAUDE.md as part of every task, not after. When a task changes the architecture, props, or file list, update CLAUDE.md before marking the task done.

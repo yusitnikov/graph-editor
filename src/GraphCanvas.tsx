@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, type PointerEvent, type MouseEvent } from 'react'
 import { useTheme } from '@mui/material'
 import type { GraphState, NodeId, Viewport } from './types'
-import { toScreen as _toScreen, toWorldCoords as _toWorldCoords, applyWheel, applyPan, applyPinch } from './viewport'
+import { toScreen as _toScreen, toWorldCoords as _toWorldCoords } from './viewport'
+import { attachPanZoom } from './attachPanZoom'
 
 const NODE_RADIUS = 12
 const EDGE_STROKE_WIDTH = 2.5
@@ -97,76 +98,10 @@ export function GraphCanvas({
     return null
   }
 
-  // Native non-passive wheel + touch listeners (passive:false needed for preventDefault)
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      onViewportChangeRef.current(applyWheel(e, svg.getBoundingClientRect(), viewportRef.current))
-    }
-
-    // last touch positions, keyed by identifier
-    const lastTouches = new Map<number, { x: number; y: number }>()
-
-    // Touches that started on a node/edge are handled by pointer events; exclude them here
-    const interactiveTouches = new Set<number>()
-
-    const handleTouchStart = (e: TouchEvent) => {
-      for (const t of Array.from(e.changedTouches)) {
-        const el = document.elementFromPoint(t.clientX, t.clientY)
-        if (el?.closest('[data-interactive]')) {
-          interactiveTouches.add(t.identifier)
-        } else {
-          lastTouches.set(t.identifier, { x: t.clientX, y: t.clientY })
-        }
-      }
-    }
-
-    const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault()
-      const rect = svg.getBoundingClientRect()
-      const vp = viewportRef.current
-      const active = Array.from(e.touches).filter(t => !interactiveTouches.has(t.identifier))
-
-      if (active.length === 1) {
-        const t = active[0]
-        const prev = lastTouches.get(t.identifier)
-        if (prev) {
-          onViewportChangeRef.current(applyPan(t.clientX - prev.x, t.clientY - prev.y, vp))
-        }
-        lastTouches.set(t.identifier, { x: t.clientX, y: t.clientY })
-      } else if (active.length >= 2) {
-        const t0 = active[0]
-        const t1 = active[1]
-        const prev0 = lastTouches.get(t0.identifier)
-        const prev1 = lastTouches.get(t1.identifier)
-        if (prev0 && prev1) {
-          onViewportChangeRef.current(applyPinch(t0, t1, prev0, prev1, rect, vp))
-        }
-        lastTouches.set(t0.identifier, { x: t0.clientX, y: t0.clientY })
-        lastTouches.set(t1.identifier, { x: t1.clientX, y: t1.clientY })
-      }
-    }
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      for (const t of Array.from(e.changedTouches)) {
-        lastTouches.delete(t.identifier)
-        interactiveTouches.delete(t.identifier)
-      }
-    }
-
-    svg.addEventListener('wheel', handleWheel, { passive: false })
-    svg.addEventListener('touchstart', handleTouchStart, { passive: false })
-    svg.addEventListener('touchmove', handleTouchMove, { passive: false })
-    svg.addEventListener('touchend', handleTouchEnd)
-    return () => {
-      svg.removeEventListener('wheel', handleWheel)
-      svg.removeEventListener('touchstart', handleTouchStart)
-      svg.removeEventListener('touchmove', handleTouchMove)
-      svg.removeEventListener('touchend', handleTouchEnd)
-    }
+    return attachPanZoom(svg, () => viewportRef.current, (vp) => onViewportChangeRef.current(vp))
   }, [])
 
   const handleSvgPointerDown = (e: PointerEvent<SVGSVGElement>) => {
