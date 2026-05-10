@@ -5,7 +5,7 @@ import { GraphCanvas } from './GraphCanvas'
 import { Toolbar } from './Toolbar'
 import type { Viewport } from './types'
 
-const theme = createTheme({ palette: { mode: 'dark' } })
+const theme = createTheme({ palette: { mode: 'light' } })
 
 // Toolbar height + top offset — used to leave visual room for the toolbar when fitting nodes
 const TOOLBAR_CLEARANCE = 80
@@ -100,7 +100,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box ref={containerRef} sx={{ position: 'fixed', inset: 0, overflow: 'hidden', bgcolor: '#1a1a2e' }}>
+      <Box ref={containerRef} sx={{ position: 'fixed', inset: 0, overflow: 'hidden', bgcolor: 'background.default' }}>
         <GraphCanvas
           state={state}
           viewport={viewport}

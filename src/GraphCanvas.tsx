@@ -1,21 +1,10 @@
 import { useRef, useState, useEffect } from 'react'
+import { useTheme } from '@mui/material'
 import type { GraphState, NodeId, Viewport } from './types'
 
 const NODE_RADIUS = 12
-const NODE_FILL = '#5c6bc0'
-const NODE_FILL_HOVER = '#3949ab'
-const NODE_FILL_SELECTED = '#e53935'
-const NODE_FILL_SELECTED_HOVER = '#c62828'
-const NODE_FILL_LINE_SOURCE = '#f57c00'
-const NODE_FILL_DRAG_TARGET = '#00897b'
-const NODE_STROKE = '#fff'
-const EDGE_STROKE = '#90a4ae'
-const EDGE_STROKE_HOVER = '#cfd8dc'
-const EDGE_STROKE_SELECTED = '#e53935'
-const EDGE_STROKE_SELECTED_HOVER = '#c62828'
 const EDGE_STROKE_WIDTH = 2.5
 const EDGE_STROKE_WIDTH_SELECTED = 4
-const PREVIEW_STROKE = '#f57c00'
 const DRAG_THRESHOLD = 6
 const MIN_SCALE = 0.1
 const MAX_SCALE = 10
@@ -65,6 +54,22 @@ export function GraphCanvas({
   onPointerMove,
   onPointerLeave,
 }: Props) {
+  const theme = useTheme()
+  const p = theme.palette
+
+  const NODE_FILL = p.primary.main
+  const NODE_FILL_HOVER = p.primary.dark
+  const NODE_FILL_SELECTED = p.secondary.main
+  const NODE_FILL_SELECTED_HOVER = p.secondary.dark
+  const NODE_FILL_LINE_SOURCE = p.secondary.main
+  const NODE_FILL_DRAG_TARGET = p.secondary.main
+  const NODE_STROKE = p.grey[800]
+  const EDGE_STROKE = p.grey[600]
+  const EDGE_STROKE_HOVER = p.grey[700]
+  const EDGE_STROKE_SELECTED = p.secondary.main
+  const EDGE_STROKE_SELECTED_HOVER = p.secondary.dark
+  const PREVIEW_STROKE = p.secondary.light
+
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null)
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
