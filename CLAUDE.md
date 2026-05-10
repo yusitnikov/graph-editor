@@ -51,7 +51,7 @@ onNodeMove         (id, x, y) => void drag a node in default mode (world coords)
 
 ### useGraphState actions
 
-- `ADD_NODE` — adds node, auto-selects it
+- `ADD_NODE` — adds node using `lastNodeColor`, auto-selects it
 - `SELECT` — sets selection (pass `null` to clear)
 - `SET_MODE` — changes mode, clears `lineDrawingFrom` and `selection` as side effects
 - `START_LINE` — sets `lineDrawingFrom`, clears selection
@@ -60,7 +60,7 @@ onNodeMove         (id, x, y) => void drag a node in default mode (world coords)
 - `CONNECT` — like FINISH_LINE but without requiring `lineDrawingFrom` (used for drag-connect)
 - `DELETE_SELECTED` — deletes selected node (and all its edges) or edge; clears selection
 - `MOVE_NODE` — updates node position in place
-- `SET_NODE_COLOR` — updates the `color` field of a node (hex string)
+- `SET_NODE_COLOR` — updates the `color` field of a node (hex string); also updates `lastNodeColor` so new nodes inherit it
 
 Edges are **undirected** for deduplication: A→B blocks B→A.
 

@@ -34,6 +34,7 @@ function Swatch({ color, selected, disabled, onClick }: SwatchProps) {
         p: 0,
         opacity: disabled ? 0.38 : 1,
         bgcolor: color,
+        '&.Mui-disabled': { bgcolor: color },
         '&:hover': { bgcolor: color, outline: (theme) => `4px solid ${theme.palette.action.hover}` },
       }}
       disableRipple={true}
@@ -42,11 +43,12 @@ function Swatch({ color, selected, disabled, onClick }: SwatchProps) {
 }
 
 interface Props {
-  color: string | null
+  color: string
+  disabled: boolean
   onChange: (color: string) => void
 }
 
-export function NodeColorPicker({ color, onChange }: Props) {
+export function NodeColorPicker({ color, disabled, onChange }: Props) {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null)
 
   const handlePick = (value: string) => {
@@ -57,9 +59,9 @@ export function NodeColorPicker({ color, onChange }: Props) {
   return (
     <>
       <Swatch
-        color={color ?? '#ffffff'}
+        color={color}
         selected={false}
-        disabled={color === null}
+        disabled={disabled}
         onClick={(e) => setAnchorEl(e.currentTarget)}
       />
       <Popover

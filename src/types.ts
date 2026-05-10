@@ -33,4 +33,5 @@ export interface GraphState {
   selection: SelectionTarget
   mode: Mode
   lineDrawingFrom: NodeId | null
+  lastNodeColor: string
 }

@@ -12,7 +12,7 @@ interface Props {
   selection: SelectionTarget
   onDelete: () => void
   onFitView: (() => void) | null
-  selectedNodeColor: string | null
+  selectedNodeColor: string
   onColorChange: (color: string) => void
 }
 
@@ -60,7 +60,7 @@ export function Toolbar({ mode, onChange, selection, onDelete, onFitView, select
         <DeleteIcon fontSize="small" />
       </IconButton>
       <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-      <NodeColorPicker color={selectedNodeColor} onChange={onColorChange} />
+      <NodeColorPicker color={selectedNodeColor} disabled={selection?.type !== 'node'} onChange={onColorChange} />
     </Box>
   )
 }

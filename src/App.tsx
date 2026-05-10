@@ -97,8 +97,8 @@ function App() {
           onFitView={state.nodes.length > 0 ? handleFitView : null}
           selectedNodeColor={
             state.selection?.type === 'node'
-              ? (state.nodes.find((n) => n.id === state.selection!.id)?.color ?? null)
-              : null
+              ? (state.nodes.find((n) => n.id === state.selection!.id)?.color ?? state.lastNodeColor)
+              : state.lastNodeColor
           }
           onColorChange={(color) => {
             if (state.selection?.type === 'node') setNodeColor(state.selection.id, color)

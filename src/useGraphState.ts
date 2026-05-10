@@ -16,12 +16,15 @@ type Action =
 let nextId = 1
 const uid = () => String(nextId++)
 
+const DEFAULT_NODE_COLOR = '#9e9e9e'
+
 const initialState: GraphState = {
   nodes: [],
   edges: [],
   selection: null,
   mode: 'default',
   lineDrawingFrom: null,
+  lastNodeColor: DEFAULT_NODE_COLOR,
 }
 
 function reducer(state: GraphState, action: Action): GraphState {
@@ -30,12 +33,16 @@ function reducer(state: GraphState, action: Action): GraphState {
       const id = uid()
       return {
         ...state,
-        nodes: [...state.nodes, { id, x: action.x, y: action.y, color: '#9e9e9e' }],
+        nodes: [...state.nodes, { id, x: action.x, y: action.y, color: state.lastNodeColor }],
         selection: { type: 'node', id },
       }
     }
-    case 'SELECT':
-      return { ...state, selection: action.target }
+    case 'SELECT': {
+      const nodeColor = action.target?.type === 'node'
+        ? state.nodes.find((n) => n.id === action.target!.id)?.color
+        : undefined
+      return { ...state, selection: action.target, ...(nodeColor ? { lastNodeColor: nodeColor } : {}) }
+    }
     case 'SET_MODE':
       return {
         ...state,
@@ -73,6 +80,7 @@ function reducer(state: GraphState, action: Action): GraphState {
       return {
         ...state,
         nodes: state.nodes.map((n) => n.id === action.id ? { ...n, color: action.color } : n),
+        lastNodeColor: action.color,
       }
     case 'DELETE_SELECTED': {
       const { selection } = state
