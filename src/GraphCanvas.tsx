@@ -156,21 +156,30 @@ export function GraphCanvas({
         const isSelected = selection?.type === 'edge' && selection.id === edge.id
         const isHovered = hoveredEdge === edge.id
         return (
-          <line
+          <g
             key={edge.id}
             data-interactive="true"
-            x1={from.x}
-            y1={from.y}
-            x2={to.x}
-            y2={to.y}
-            stroke={isSelected ? EDGE_STROKE_SELECTED : EDGE_STROKE}
-            strokeWidth={isSelected || isHovered ? EDGE_STROKE_WIDTH_SELECTED : EDGE_STROKE_WIDTH}
-            strokeLinecap="round"
             style={{ cursor: mode === 'default' ? 'pointer' : 'default' }}
             onPointerDown={(e) => mode === 'default' && handleEdgePointerDown(e, edge.id)}
             onPointerEnter={() => mode === 'default' && setHoveredEdge(edge.id)}
             onPointerLeave={() => setHoveredEdge(null)}
-          />
+          >
+            {/* invisible wide hit area */}
+            <line
+              x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+              stroke="transparent"
+              strokeWidth={20}
+              strokeLinecap="round"
+            />
+            {/* visible line */}
+            <line
+              x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+              stroke={isSelected ? EDGE_STROKE_SELECTED : EDGE_STROKE}
+              strokeWidth={isSelected || isHovered ? EDGE_STROKE_WIDTH_SELECTED : EDGE_STROKE_WIDTH}
+              strokeLinecap="round"
+              style={{ pointerEvents: 'none' }}
+            />
+          </g>
         )
       })}
 
