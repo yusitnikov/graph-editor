@@ -10,6 +10,7 @@ type Action =
   | { type: 'CANCEL_LINE' }
   | { type: 'CONNECT'; from: NodeId; to: NodeId }
   | { type: 'DELETE_SELECTED' }
+  | { type: 'MOVE_NODE'; id: NodeId; x: number; y: number }
 
 let nextId = 1
 const uid = () => String(nextId++)
@@ -62,6 +63,11 @@ function reducer(state: GraphState, action: Action): GraphState {
     }
     case 'CANCEL_LINE':
       return { ...state, lineDrawingFrom: null }
+    case 'MOVE_NODE':
+      return {
+        ...state,
+        nodes: state.nodes.map((n) => n.id === action.id ? { ...n, x: action.x, y: action.y } : n),
+      }
     case 'DELETE_SELECTED': {
       const { selection } = state
       if (!selection) return state
@@ -114,6 +120,7 @@ export function useGraphState() {
   const cancelLine = () => dispatch({ type: 'CANCEL_LINE' })
   const connect = (from: NodeId, to: NodeId) => dispatch({ type: 'CONNECT', from, to })
   const deleteSelected = () => dispatch({ type: 'DELETE_SELECTED' })
+  const moveNode = (id: NodeId, x: number, y: number) => dispatch({ type: 'MOVE_NODE', id, x, y })
 
-  return { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected }
+  return { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected, moveNode }
 }

@@ -12,7 +12,7 @@ const TOOLBAR_CLEARANCE = 80
 const FIT_PADDING = 48
 
 function App() {
-  const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected } = useGraphState()
+  const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected, moveNode } = useGraphState()
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -119,6 +119,7 @@ function App() {
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
           onNodeDragConnect={handleNodeDragConnect}
+          onNodeMove={moveNode}
           cursorPos={cursorPos}
           onPointerMove={(x, y) => setCursorPos({ x, y })}
           onPointerLeave={() => setCursorPos(null)}

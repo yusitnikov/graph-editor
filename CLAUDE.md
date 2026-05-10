@@ -42,12 +42,12 @@ Keyboard handler lives in `App.tsx` (`useEffect` on `window`). All shortcuts wor
 ## Graph editor behaviour
 
 - Two modes: **default** and **line-drawing**, toggled via the Toolbar.
-- **Default mode**: click empty space → add node (auto-selected); click node or edge → select it. Dragging nodes does nothing.
+- **Default mode**: click empty space → add node (auto-selected); click node or edge → select it. Drag a node to reposition it (shows `grabbing` cursor while dragging).
 - **Line-drawing mode**: click a node to start an edge, click another node to finish it; or drag from one node to another. Clicking an edge selects it (cancels any in-progress line draw). Clicking empty space cancels an in-progress draw.
 - Adding a node or edge auto-selects it.
 - Duplicate edges and self-connections are silently ignored.
 - Edges have a wide invisible hit area (strokeWidth 20) for easier clicking.
-- Drag gesture uses a ref (`dragTracking`) for raw gesture state; a separate `dragSourceId` state drives rendering so React re-renders correctly.
+- Drag gesture uses a ref (`dragTracking`) for raw gesture state; separate `dragSourceId` and `movingNodeId` states drive rendering so React re-renders correctly.
 - Never read `ref.current` during render — use state for anything that affects the rendered output.
 - **Pan/zoom**: viewport state (`x`, `y`, `scale`) lives in `App.tsx`. All positions are projected to screen space via `toScreen()` before rendering — sizes (radii, stroke widths) are always fixed screen-pixel constants, so zoom moves positions only. Native (non-passive) `wheel` handles trackpad/mouse pan+zoom; native `touchstart`/`touchmove`/`touchend` handle one-finger pan and two-finger pinch-zoom on mobile. Touches that start on `[data-interactive]` elements are excluded from pan/zoom and handled by pointer events instead.
 

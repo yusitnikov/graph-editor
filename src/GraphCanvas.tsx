@@ -29,6 +29,7 @@ interface Props {
   onNodeClick: (id: NodeId) => void
   onEdgeClick: (id: string) => void
   onNodeDragConnect: (from: NodeId, to: NodeId) => void
+  onNodeMove: (id: NodeId, x: number, y: number) => void
   cursorPos: { x: number; y: number } | null
   onPointerMove: (x: number, y: number) => void
   onPointerLeave: () => void
@@ -39,6 +40,9 @@ interface DragTracking {
   startX: number
   startY: number
   dragging: boolean
+  // for node-move in default mode: world-space offset from node center to pointer down point
+  offsetX: number
+  offsetY: number
 }
 
 interface PanTracking {
@@ -56,6 +60,7 @@ export function GraphCanvas({
   onNodeClick,
   onEdgeClick,
   onNodeDragConnect,
+  onNodeMove,
   cursorPos,
   onPointerMove,
   onPointerLeave,
@@ -65,8 +70,10 @@ export function GraphCanvas({
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
   const dragTracking = useRef<DragTracking | null>(null)
   const [dragSourceId, setDragSourceId] = useState<NodeId | null>(null)
+  const [movingNodeId, setMovingNodeId] = useState<NodeId | null>(null)
   const panTracking = useRef<PanTracking | null>(null)
   const didPan = useRef(false)
+  const didNodeDrag = useRef(false)
   // Ref so native handlers always see current viewport/callbacks without re-registering
   const viewportRef = useRef(viewport)
   // eslint-disable-next-line react-hooks/refs
@@ -234,18 +241,23 @@ export function GraphCanvas({
     const dt = dragTracking.current
     if (!dt) return
 
-    if (!dt.dragging && state.mode === 'line-drawing') {
+    if (!dt.dragging) {
       const dx = x - dt.startX
       const dy = y - dt.startY
       if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
         dt.dragging = true
-        setDragSourceId(dt.fromId)
+        if (state.mode === 'line-drawing') setDragSourceId(dt.fromId)
       }
     }
 
     if (dt.dragging) {
-      const target = nodeAtPoint(x, y)
-      setHoveredNode(target !== dt.fromId ? (target ?? null) : null)
+      if (state.mode === 'default') {
+        if (movingNodeId !== dt.fromId) setMovingNodeId(dt.fromId)
+        onNodeMove(dt.fromId, x - dt.offsetX, y - dt.offsetY)
+      } else {
+        const target = nodeAtPoint(x, y)
+        setHoveredNode(target !== dt.fromId ? (target ?? null) : null)
+      }
     }
   }
 
@@ -264,12 +276,17 @@ export function GraphCanvas({
 
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
 
-    if (dt.dragging && state.mode === 'line-drawing') {
-      const target = nodeAtPoint(x, y)
-      if (target && target !== dt.fromId) {
-        onNodeDragConnect(dt.fromId, target)
+    if (dt.dragging) {
+      if (state.mode === 'line-drawing') {
+        const target = nodeAtPoint(x, y)
+        if (target && target !== dt.fromId) {
+          onNodeDragConnect(dt.fromId, target)
+        }
+        setHoveredNode(null)
+      } else {
+        setMovingNodeId(null)
+        didNodeDrag.current = true
       }
-      setHoveredNode(null)
     } else {
       onNodeClick(dt.fromId)
     }
@@ -278,15 +295,21 @@ export function GraphCanvas({
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if ((e.target as SVGElement).closest('[data-interactive]')) return
     if (didPan.current) { didPan.current = false; return }
+    if (didNodeDrag.current) { didNodeDrag.current = false; return }
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
     onCanvasClick(x, y)
   }
 
   const handleNodePointerDown = (e: React.PointerEvent, id: NodeId) => {
     e.stopPropagation()
-    ;(e.currentTarget as SVGElement).releasePointerCapture(e.pointerId)
+    // Transfer capture to the SVG so pointer events keep firing there even when the
+    // pointer leaves the node, goes over the toolbar, or exits the window bounds.
+    svgRef.current?.setPointerCapture(e.pointerId)
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
-    dragTracking.current = { fromId: id, startX: x, startY: y, dragging: false }
+    const node = stateRef.current.nodes.find((n) => n.id === id)
+    const offsetX = node ? x - node.x : 0
+    const offsetY = node ? y - node.y : 0
+    dragTracking.current = { fromId: id, startX: x, startY: y, dragging: false, offsetX, offsetY }
   }
 
   const handleNodeClick = (e: React.MouseEvent) => {
@@ -306,6 +329,7 @@ export function GraphCanvas({
   const { lineDrawingFrom, selection, mode } = state
 
   const isDragging = dragSourceId !== null && mode === 'line-drawing'
+  const isMovingNode = movingNodeId !== null && mode === 'default'
   const effectiveSource = lineDrawingFrom ?? dragSourceId
   const sourceNode = effectiveSource ? nodeMap.get(effectiveSource) : null
 
@@ -321,7 +345,7 @@ export function GraphCanvas({
       style={{
         width: '100%',
         height: '100%',
-        cursor: isDragging ? 'crosshair' : 'default',
+        cursor: isDragging ? 'crosshair' : isMovingNode ? 'grabbing' : 'default',
         touchAction: 'none',
         WebkitTapHighlightColor: 'transparent',
       }}
@@ -335,6 +359,7 @@ export function GraphCanvas({
         if (dragTracking.current) {
           dragTracking.current = null
           setDragSourceId(null)
+          setMovingNodeId(null)
           setHoveredNode(null)
         }
         onPointerLeave()
