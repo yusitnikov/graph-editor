@@ -19,6 +19,7 @@ npm run preview  # preview production build
 ## Workflow rules
 
 - Never run `npm run build` (or any build command) — the user will do this themselves.
+- Never run `tsc --noEmit` to type-check — use `npm run lint` instead.
 - Never verbally acknowledge a rule without also writing it into CLAUDE.md.
 - Do not use the memory file system — write all persistent rules directly into CLAUDE.md.
 
@@ -27,7 +28,7 @@ npm run preview  # preview production build
 - `src/types.ts` — shared types: `Node`, `Edge`, `GraphState`, `Mode`, `SelectionTarget`, `Viewport`
 - `src/useGraphState.ts` — reducer-based graph state (nodes, edges, selection, mode, line drawing)
 - `src/GraphCanvas.tsx` — SVG canvas, all pointer interaction (click, drag-to-connect, hover)
-- `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + delete button when something is selected
+- `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + fit-view button (when nodes exist) + delete button when something is selected
 - `src/App.tsx` — root layout, wires state to canvas and UI, full-screen fixed dark background; holds `viewport` state (`x`, `y`, `scale`) and passes it to `GraphCanvas`
 
 ## Keyboard shortcuts

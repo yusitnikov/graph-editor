@@ -2,6 +2,7 @@ import { Box, Divider, IconButton, ToggleButton, ToggleButtonGroup, Tooltip } fr
 import NearMeIcon from '@mui/icons-material/NearMe'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import DeleteIcon from '@mui/icons-material/Delete'
+import FitScreenIcon from '@mui/icons-material/FitScreen'
 import type { Mode, SelectionTarget } from './types'
 
 interface Props {
@@ -9,9 +10,10 @@ interface Props {
   onChange: (mode: Mode) => void
   selection: SelectionTarget
   onDelete: () => void
+  onFitView: (() => void) | null
 }
 
-export function Toolbar({ mode, onChange, selection, onDelete }: Props) {
+export function Toolbar({ mode, onChange, selection, onDelete, onFitView }: Props) {
   return (
     <Box
       data-toolbar="true"
@@ -50,6 +52,16 @@ export function Toolbar({ mode, onChange, selection, onDelete }: Props) {
           </ToggleButton>
         </Tooltip>
       </ToggleButtonGroup>
+      {onFitView && (
+        <>
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          <Tooltip title="Fit view to all nodes">
+            <IconButton size="small" onClick={onFitView} aria-label="Fit view">
+              <FitScreenIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </>
+      )}
       {selection && (
         <>
           <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />

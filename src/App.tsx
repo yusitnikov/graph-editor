@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { CssBaseline, ThemeProvider, createTheme, Box } from '@mui/material'
 import { useGraphState } from './useGraphState'
 import { GraphCanvas } from './GraphCanvas'
@@ -7,10 +7,15 @@ import type { Viewport } from './types'
 
 const theme = createTheme({ palette: { mode: 'dark' } })
 
+// Toolbar height + top offset — used to leave visual room for the toolbar when fitting nodes
+const TOOLBAR_CLEARANCE = 80
+const FIT_PADDING = 48
+
 function App() {
   const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected } = useGraphState()
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 })
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -28,6 +33,49 @@ function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [state.mode, select, cancelLine, setMode, deleteSelected])
+
+  const handleFitView = useCallback(() => {
+    const nodes = state.nodes
+    if (nodes.length === 0) return
+
+    const container = containerRef.current
+    const cw = container ? container.clientWidth : window.innerWidth
+    const ch = container ? container.clientHeight : window.innerHeight
+
+    if (nodes.length === 1) {
+      // Center the single node; preserve current scale
+      setViewport(vp => ({
+        x: cw / 2 - nodes[0].x * vp.scale,
+        y: (ch + TOOLBAR_CLEARANCE) / 2 - nodes[0].y * vp.scale,
+        scale: vp.scale,
+      }))
+      return
+    }
+
+    const minX = Math.min(...nodes.map(n => n.x))
+    const maxX = Math.max(...nodes.map(n => n.x))
+    const minY = Math.min(...nodes.map(n => n.y))
+    const maxY = Math.max(...nodes.map(n => n.y))
+
+    const boundsW = maxX - minX
+    const boundsH = maxY - minY
+
+    const availW = cw - FIT_PADDING * 2
+    const availH = ch - TOOLBAR_CLEARANCE - FIT_PADDING * 2
+
+    const scaleX = boundsW > 0 ? availW / boundsW : 1
+    const scaleY = boundsH > 0 ? availH / boundsH : 1
+    const scale = Math.min(scaleX, scaleY, 1)
+
+    const cx = (minX + maxX) / 2
+    const cy = (minY + maxY) / 2
+
+    setViewport({
+      x: cw / 2 - cx * scale,
+      y: (ch + TOOLBAR_CLEARANCE) / 2 - cy * scale,
+      scale,
+    })
+  }, [state.nodes])
 
   const handleCanvasClick = (x: number, y: number) => {
     if (state.mode === 'default') {
@@ -63,7 +111,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ position: 'fixed', inset: 0, overflow: 'hidden', bgcolor: '#1a1a2e' }}>
+      <Box ref={containerRef} sx={{ position: 'fixed', inset: 0, overflow: 'hidden', bgcolor: '#1a1a2e' }}>
         <GraphCanvas
           state={state}
           viewport={viewport}
@@ -76,7 +124,7 @@ function App() {
           onPointerMove={(x, y) => setCursorPos({ x, y })}
           onPointerLeave={() => setCursorPos(null)}
         />
-        <Toolbar mode={state.mode} onChange={setMode} selection={state.selection} onDelete={deleteSelected} />
+        <Toolbar mode={state.mode} onChange={setMode} selection={state.selection} onDelete={deleteSelected} onFitView={state.nodes.length > 0 ? handleFitView : null} />
       </Box>
     </ThemeProvider>
   )
