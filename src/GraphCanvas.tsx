@@ -41,6 +41,13 @@ interface DragTracking {
   dragging: boolean
 }
 
+interface PanTracking {
+  startClientX: number
+  startClientY: number
+  clientX: number
+  clientY: number
+}
+
 export function GraphCanvas({
   state,
   viewport,
@@ -58,7 +65,7 @@ export function GraphCanvas({
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
   const dragTracking = useRef<DragTracking | null>(null)
   const [dragSourceId, setDragSourceId] = useState<NodeId | null>(null)
-  const panTracking = useRef<{ clientX: number; clientY: number } | null>(null)
+  const panTracking = useRef<PanTracking | null>(null)
   const didPan = useRef(false)
   // Ref so native handlers always see current viewport/callbacks without re-registering
   const viewportRef = useRef(viewport)
@@ -205,7 +212,7 @@ export function GraphCanvas({
     // Touch-based pan is handled by the native touch handlers; skip touch pointers here
     if (e.pointerType === 'touch') return
     didPan.current = false
-    panTracking.current = { clientX: e.clientX, clientY: e.clientY }
+    panTracking.current = { startClientX: e.clientX, startClientY: e.clientY, clientX: e.clientX, clientY: e.clientY }
     ;(e.currentTarget as SVGElement).setPointerCapture(e.pointerId)
   }
 
@@ -216,8 +223,10 @@ export function GraphCanvas({
     if (panTracking.current) {
       const dx = e.clientX - panTracking.current.clientX
       const dy = e.clientY - panTracking.current.clientY
-      if (dx !== 0 || dy !== 0) didPan.current = true
-      panTracking.current = { clientX: e.clientX, clientY: e.clientY }
+      const totalDx = e.clientX - panTracking.current.startClientX
+      const totalDy = e.clientY - panTracking.current.startClientY
+      if (Math.sqrt(totalDx * totalDx + totalDy * totalDy) > DRAG_THRESHOLD) didPan.current = true
+      panTracking.current = { ...panTracking.current, clientX: e.clientX, clientY: e.clientY }
       onViewportChange({ ...viewport, x: viewport.x + dx, y: viewport.y + dy })
       return
     }
