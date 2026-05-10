@@ -58,12 +58,17 @@ export function GraphCanvas({
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
   const dragTracking = useRef<DragTracking | null>(null)
   const [dragSourceId, setDragSourceId] = useState<NodeId | null>(null)
+  const panTracking = useRef<{ clientX: number; clientY: number } | null>(null)
+  const didPan = useRef(false)
   // Ref so native handlers always see current viewport/callbacks without re-registering
   const viewportRef = useRef(viewport)
+  // eslint-disable-next-line react-hooks/refs
   viewportRef.current = viewport
   const onViewportChangeRef = useRef(onViewportChange)
+  // eslint-disable-next-line react-hooks/refs
   onViewportChangeRef.current = onViewportChange
   const stateRef = useRef(state)
+  // eslint-disable-next-line react-hooks/refs
   stateRef.current = state
 
   // Convert client coords → SVG element coords (ignoring viewport transform)
@@ -195,9 +200,27 @@ export function GraphCanvas({
     }
   }, [])
 
+  const handleSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if ((e.target as SVGElement).closest('[data-interactive]')) return
+    // Touch-based pan is handled by the native touch handlers; skip touch pointers here
+    if (e.pointerType === 'touch') return
+    didPan.current = false
+    panTracking.current = { clientX: e.clientX, clientY: e.clientY }
+    ;(e.currentTarget as SVGElement).setPointerCapture(e.pointerId)
+  }
+
   const handleSvgPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
     onPointerMove(x, y)
+
+    if (panTracking.current) {
+      const dx = e.clientX - panTracking.current.clientX
+      const dy = e.clientY - panTracking.current.clientY
+      if (dx !== 0 || dy !== 0) didPan.current = true
+      panTracking.current = { clientX: e.clientX, clientY: e.clientY }
+      onViewportChange({ ...viewport, x: viewport.x + dx, y: viewport.y + dy })
+      return
+    }
 
     const dt = dragTracking.current
     if (!dt) return
@@ -218,6 +241,12 @@ export function GraphCanvas({
   }
 
   const handleSvgPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (panTracking.current) {
+      panTracking.current = null
+      // didPan.current stays set until handleSvgClick consumes it
+      return
+    }
+
     const dt = dragTracking.current
     dragTracking.current = null
     setDragSourceId(null)
@@ -239,6 +268,7 @@ export function GraphCanvas({
 
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if ((e.target as SVGElement).closest('[data-interactive]')) return
+    if (didPan.current) { didPan.current = false; return }
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
     onCanvasClick(x, y)
   }
@@ -287,9 +317,12 @@ export function GraphCanvas({
         WebkitTapHighlightColor: 'transparent',
       }}
       onClick={handleSvgClick}
+      onPointerDown={handleSvgPointerDown}
       onPointerMove={handleSvgPointerMove}
       onPointerUp={handleSvgPointerUp}
       onPointerLeave={() => {
+        panTracking.current = null
+        didPan.current = false
         if (dragTracking.current) {
           dragTracking.current = null
           setDragSourceId(null)
