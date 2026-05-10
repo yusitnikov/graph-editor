@@ -1,4 +1,4 @@
-import { Box, Divider, IconButton, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material'
+import { Box, Divider, IconButton, ToggleButton, ToggleButtonGroup } from '@mui/material'
 import NearMeIcon from '@mui/icons-material/NearMe'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -41,37 +41,21 @@ export function Toolbar({ mode, onChange, selection, onDelete, onFitView }: Prop
           if (value) onChange(value)
         }}
       >
-        <Tooltip title="Default mode — click empty space to add node, click node/edge to select">
-          <ToggleButton value="default" aria-label="Default mode">
-            <NearMeIcon fontSize="small" />
-          </ToggleButton>
-        </Tooltip>
-        <Tooltip title="Line drawing mode — click a node then another to draw an edge">
-          <ToggleButton value="line-drawing" aria-label="Line drawing mode">
-            <TimelineIcon fontSize="small" />
-          </ToggleButton>
-        </Tooltip>
+        <ToggleButton value="default" aria-label="Default mode">
+          <NearMeIcon fontSize="small" />
+        </ToggleButton>
+        <ToggleButton value="line-drawing" aria-label="Line drawing mode">
+          <TimelineIcon fontSize="small" />
+        </ToggleButton>
       </ToggleButtonGroup>
-      {onFitView && (
-        <>
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          <Tooltip title="Fit view to all nodes">
-            <IconButton size="small" onClick={onFitView} aria-label="Fit view">
-              <FitScreenIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </>
-      )}
-      {selection && (
-        <>
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          <Tooltip title={`Delete selected ${selection.type}`}>
-            <IconButton size="small" onClick={onDelete} aria-label="Delete selected">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </>
-      )}
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+      <IconButton size="small" onClick={onFitView ?? undefined} disabled={!onFitView} aria-label="Fit view">
+        <FitScreenIcon fontSize="small" />
+      </IconButton>
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+      <IconButton size="small" onClick={onDelete} disabled={!selection} aria-label="Delete selected">
+        <DeleteIcon fontSize="small" />
+      </IconButton>
     </Box>
   )
 }
