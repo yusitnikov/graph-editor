@@ -56,10 +56,10 @@ export function GraphCanvas({
   const theme = useTheme()
   const p = theme.palette
 
-  const NODE_FILL = p.primary.main
+  const NODE_FILL = '#ffffff'
   const NODE_STROKE = p.grey[800]
   const EDGE_STROKE = p.grey[600]
-  const PREVIEW_STROKE = p.secondary.light
+  const PREVIEW_STROKE = EDGE_STROKE
   const OUTLINE_COLOR = p.grey[400]
 
   const svgRef = useRef<SVGSVGElement>(null)
