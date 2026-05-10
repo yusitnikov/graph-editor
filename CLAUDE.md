@@ -48,7 +48,7 @@ Keyboard handler lives in `App.tsx` (`useEffect` on `window`). Events from toolb
 - Edges have a wide invisible hit area (strokeWidth 20) for easier clicking.
 - Drag gesture uses a ref (`dragTracking`) for raw gesture state; a separate `dragSourceId` state drives rendering so React re-renders correctly.
 - Never read `ref.current` during render — use state for anything that affects the rendered output.
-- **Pan/zoom**: `wheel` events on the SVG handle panning (plain scroll / two-finger trackpad swipe) and zooming (pinch / ctrl+wheel). All graph content lives inside a `<g transform="translate(x,y) scale(s)">`. Node coordinates are stored in world space; `toWorldCoords` converts client coords by reversing the viewport transform. Stroke widths and hit areas are divided by `viewport.scale` to stay visually constant as you zoom.
+- **Pan/zoom**: viewport state (`x`, `y`, `scale`) lives in `App.tsx`. All positions are projected to screen space via `toScreen()` before rendering — sizes (radii, stroke widths) are always fixed screen-pixel constants, so zoom moves positions only. Native (non-passive) `wheel` handles trackpad/mouse pan+zoom; native `touchstart`/`touchmove`/`touchend` handle one-finger pan and two-finger pinch-zoom on mobile. Touches that start on `[data-interactive]` elements are excluded from pan/zoom and handled by pointer events instead.
 
 ## Key notes
 

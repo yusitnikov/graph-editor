@@ -58,11 +58,13 @@ export function GraphCanvas({
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
   const dragTracking = useRef<DragTracking | null>(null)
   const [dragSourceId, setDragSourceId] = useState<NodeId | null>(null)
-  // Ref so the native wheel handler always sees current viewport without re-registering
+  // Ref so native handlers always see current viewport/callbacks without re-registering
   const viewportRef = useRef(viewport)
   viewportRef.current = viewport
   const onViewportChangeRef = useRef(onViewportChange)
   onViewportChangeRef.current = onViewportChange
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   // Convert client coords → SVG element coords (ignoring viewport transform)
   const toSvgElementCoords = (clientX: number, clientY: number) => {
@@ -92,10 +94,11 @@ export function GraphCanvas({
     return null
   }
 
-  // Native non-passive wheel listener so preventDefault works
+  // Native non-passive wheel + touch listeners (passive:false needed for preventDefault)
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
+
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
       const vp = viewportRef.current
@@ -106,8 +109,8 @@ export function GraphCanvas({
         // deltaMode 0 = pixels (trackpad pinch sends small values ~1–5)
         // deltaMode 1 = lines, deltaMode 2 = pages (mouse wheel sends ~100 in pixel mode)
         const delta = e.deltaMode === 0 && Math.abs(e.deltaY) < 50
-          ? e.deltaY * 10   // trackpad pinch: amplify the small pixel deltas
-          : e.deltaY        // mouse ctrl+wheel: use as-is
+          ? e.deltaY * 10
+          : e.deltaY
         const zoomFactor = Math.pow(0.999, delta)
         const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, vp.scale * zoomFactor))
         const newX = sx - (sx - vp.x) * (newScale / vp.scale)
@@ -117,8 +120,79 @@ export function GraphCanvas({
         onViewportChangeRef.current({ ...vp, x: vp.x - e.deltaX, y: vp.y - e.deltaY })
       }
     }
+
+    // last touch positions, keyed by identifier
+    const lastTouches = new Map<number, { x: number; y: number }>()
+
+    // Touches that started on a node/edge are handled by pointer events; exclude them here
+    const interactiveTouches = new Set<number>()
+
+    const handleTouchStart = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        const el = document.elementFromPoint(t.clientX, t.clientY)
+        if (el?.closest('[data-interactive]')) {
+          interactiveTouches.add(t.identifier)
+        } else {
+          lastTouches.set(t.identifier, { x: t.clientX, y: t.clientY })
+        }
+      }
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const rect = svg.getBoundingClientRect()
+      const vp = viewportRef.current
+      // Only consider non-interactive touches for pan/zoom
+      const active = Array.from(e.touches).filter(t => !interactiveTouches.has(t.identifier))
+
+      if (active.length === 1) {
+        const t = active[0]
+        const prev = lastTouches.get(t.identifier)
+        if (prev) {
+          const dx = t.clientX - prev.x
+          const dy = t.clientY - prev.y
+          onViewportChangeRef.current({ ...vp, x: vp.x + dx, y: vp.y + dy })
+        }
+        lastTouches.set(t.identifier, { x: t.clientX, y: t.clientY })
+      } else if (active.length >= 2) {
+        const t0 = active[0]
+        const t1 = active[1]
+        const prev0 = lastTouches.get(t0.identifier)
+        const prev1 = lastTouches.get(t1.identifier)
+        if (prev0 && prev1) {
+          const prevDist = Math.hypot(prev1.x - prev0.x, prev1.y - prev0.y)
+          const newDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+          if (prevDist > 0) {
+            const midX = (t0.clientX + t1.clientX) / 2 - rect.left
+            const midY = (t0.clientY + t1.clientY) / 2 - rect.top
+            const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, vp.scale * (newDist / prevDist)))
+            const newX = midX - (midX - vp.x) * (newScale / vp.scale)
+            const newY = midY - (midY - vp.y) * (newScale / vp.scale)
+            onViewportChangeRef.current({ x: newX, y: newY, scale: newScale })
+          }
+        }
+        lastTouches.set(t0.identifier, { x: t0.clientX, y: t0.clientY })
+        lastTouches.set(t1.identifier, { x: t1.clientX, y: t1.clientY })
+      }
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        lastTouches.delete(t.identifier)
+        interactiveTouches.delete(t.identifier)
+      }
+    }
+
     svg.addEventListener('wheel', handleWheel, { passive: false })
-    return () => svg.removeEventListener('wheel', handleWheel)
+    svg.addEventListener('touchstart', handleTouchStart, { passive: false })
+    svg.addEventListener('touchmove', handleTouchMove, { passive: false })
+    svg.addEventListener('touchend', handleTouchEnd)
+    return () => {
+      svg.removeEventListener('wheel', handleWheel)
+      svg.removeEventListener('touchstart', handleTouchStart)
+      svg.removeEventListener('touchmove', handleTouchMove)
+      svg.removeEventListener('touchend', handleTouchEnd)
+    }
   }, [])
 
   const handleSvgPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
