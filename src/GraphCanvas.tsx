@@ -5,11 +5,14 @@ const NODE_RADIUS = 20
 const NODE_FILL = '#5c6bc0'
 const NODE_FILL_HOVER = '#3949ab'
 const NODE_FILL_SELECTED = '#e53935'
+const NODE_FILL_SELECTED_HOVER = '#c62828'
 const NODE_FILL_LINE_SOURCE = '#f57c00'
 const NODE_FILL_DRAG_TARGET = '#00897b'
 const NODE_STROKE = '#fff'
 const EDGE_STROKE = '#90a4ae'
+const EDGE_STROKE_HOVER = '#cfd8dc'
 const EDGE_STROKE_SELECTED = '#e53935'
+const EDGE_STROKE_SELECTED_HOVER = '#c62828'
 const EDGE_STROKE_WIDTH = 2.5
 const EDGE_STROKE_WIDTH_SELECTED = 4
 const PREVIEW_STROKE = '#f57c00'
@@ -174,7 +177,12 @@ export function GraphCanvas({
             {/* visible line */}
             <line
               x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-              stroke={isSelected ? EDGE_STROKE_SELECTED : EDGE_STROKE}
+              stroke={
+                isSelected && isHovered ? EDGE_STROKE_SELECTED_HOVER
+                : isSelected ? EDGE_STROKE_SELECTED
+                : isHovered ? EDGE_STROKE_HOVER
+                : EDGE_STROKE
+              }
               strokeWidth={isSelected || isHovered ? EDGE_STROKE_WIDTH_SELECTED : EDGE_STROKE_WIDTH}
               strokeLinecap="round"
               style={{ pointerEvents: 'none' }}
@@ -208,6 +216,7 @@ export function GraphCanvas({
         let fill = NODE_FILL
         if (isDragTarget) fill = NODE_FILL_DRAG_TARGET
         else if (isSource) fill = NODE_FILL_LINE_SOURCE
+        else if (isSelected && isHovered) fill = NODE_FILL_SELECTED_HOVER
         else if (isSelected) fill = NODE_FILL_SELECTED
         else if (isHovered) fill = NODE_FILL_HOVER
 
