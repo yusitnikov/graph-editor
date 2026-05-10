@@ -44,12 +44,9 @@ onNodeClick        (id) => void      click on a node
 onEdgeClick        (id) => void      click on an edge
 onNodeDragConnect  (from, to) => void drag from node to node in line-drawing mode
 onNodeMove         (id, x, y) => void drag a node in default mode (world coords)
-cursorPos          {x,y}|null        current pointer in world coords (for preview line)
-onPointerMove      (x, y) => void    pointer moved over canvas (world coords)
-onPointerLeave     () => void        pointer left canvas
 ```
 
-> Note: `cursorPos`, `onPointerMove`, `onPointerLeave` will be removed once task 3 is complete (cursorPos moves into GraphCanvas).
+`cursorPos` (world coords of current pointer) is internal state in `GraphCanvas`, used only to render the dashed preview line.
 
 ### useGraphState actions
 
@@ -88,7 +85,7 @@ Keyboard handler lives in `App.tsx` (`useEffect` on `window`). All shortcuts wor
 - **Stale-ref pattern**: `viewportRef` and `onViewportChangeRef` mirror their props into refs so native event handlers (wheel, touch) always see current values without needing to re-register on every render.
 - **`DRAG_THRESHOLD`** (6px): for canvas pan it's in screen pixels; for node-drag it's in world coords. Same constant, different coordinate spaces.
 - **SVG render order**: edge outlines → node outlines → edges → preview line → nodes. Outlines only render for selected or hovered elements; all have `pointerEvents: none`.
-- **`cursorPos`** is tracked in world coordinates in `App.tsx` and passed to `GraphCanvas` solely to render the dashed preview line while drawing an edge. (Will move into `GraphCanvas` in task 3.)
+- **`cursorPos`** is internal state in `GraphCanvas` (world coords), used only to render the dashed preview line while drawing an edge.
 
 ## Key notes
 

@@ -18,9 +18,6 @@ interface Props {
   onEdgeClick: (id: string) => void
   onNodeDragConnect: (from: NodeId, to: NodeId) => void
   onNodeMove: (id: NodeId, x: number, y: number) => void
-  cursorPos: { x: number; y: number } | null
-  onPointerMove: (x: number, y: number) => void
-  onPointerLeave: () => void
 }
 
 interface DragTracking {
@@ -49,9 +46,6 @@ export function GraphCanvas({
   onEdgeClick,
   onNodeDragConnect,
   onNodeMove,
-  cursorPos,
-  onPointerMove,
-  onPointerLeave,
 }: Props) {
   const theme = useTheme()
   const p = theme.palette
@@ -63,6 +57,7 @@ export function GraphCanvas({
   const OUTLINE_COLOR = p.grey[400]
 
   const svgRef = useRef<SVGSVGElement>(null)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null)
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
   const dragTracking = useRef<DragTracking | null>(null)
@@ -115,7 +110,7 @@ export function GraphCanvas({
 
   const handleSvgPointerMove = (e: PointerEvent<SVGSVGElement>) => {
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
-    onPointerMove(x, y)
+    setCursorPos({ x, y })
 
     if (panTracking.current) {
       const dx = e.clientX - panTracking.current.clientX
@@ -251,7 +246,7 @@ export function GraphCanvas({
           setMovingNodeId(null)
           setHoveredNode(null)
         }
-        onPointerLeave()
+        setCursorPos(null)
       }}
     >
       {/* Edge outlines (rendered before everything else) */}
