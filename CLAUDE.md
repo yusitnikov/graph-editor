@@ -16,6 +16,12 @@ npm run preview  # preview production build
 - **Vite 8** + **React 19** + **TypeScript 6**
 - **MUI v9** (`@mui/material`, `@mui/icons-material`) with Emotion for styling
 
+## Workflow rules
+
+- Never run `npm run build` (or any build command) — the user will do this themselves.
+- Never verbally acknowledge a rule without also writing it into CLAUDE.md.
+- Do not use the memory file system — write all persistent rules directly into CLAUDE.md.
+
 ## Key notes
 
 - MUI v9 does not support shorthand system props (e.g. `mt={2}`). Always use the `sx` prop: `sx={{ mt: 2 }}`.
