@@ -276,6 +276,10 @@ export function GraphCanvas({
 
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
 
+    // SVG capture means the click event that follows will land on the SVG background,
+    // not the node — always suppress it so onCanvasClick doesn't fire.
+    didNodeDrag.current = true
+
     if (dt.dragging) {
       if (state.mode === 'line-drawing') {
         const target = nodeAtPoint(x, y)
@@ -285,7 +289,6 @@ export function GraphCanvas({
         setHoveredNode(null)
       } else {
         setMovingNodeId(null)
-        didNodeDrag.current = true
       }
     } else {
       onNodeClick(dt.fromId)
