@@ -73,7 +73,7 @@ function App() {
           onPointerMove={(x, y) => setCursorPos({ x, y })}
           onPointerLeave={() => setCursorPos(null)}
         />
-        <Toolbar mode={state.mode} onChange={setMode} />
+        <Toolbar mode={state.mode} onChange={setMode} selection={state.selection} onDelete={deleteSelected} />
         <StatusBar state={state} />
       </Box>
     </ThemeProvider>
