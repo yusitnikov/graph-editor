@@ -41,16 +41,6 @@ function App() {
     const cw = container ? container.clientWidth : window.innerWidth
     const ch = container ? container.clientHeight : window.innerHeight
 
-    if (nodes.length === 1) {
-      // Center the single node; preserve current scale
-      setViewport(vp => ({
-        x: cw / 2 - nodes[0].x * vp.scale,
-        y: (ch + TOOLBAR_CLEARANCE) / 2 - nodes[0].y * vp.scale,
-        scale: vp.scale,
-      }))
-      return
-    }
-
     const minX = Math.min(...nodes.map(n => n.x))
     const maxX = Math.max(...nodes.map(n => n.x))
     const minY = Math.min(...nodes.map(n => n.y))
@@ -62,9 +52,9 @@ function App() {
     const availW = cw - FIT_PADDING * 2
     const availH = ch - TOOLBAR_CLEARANCE - FIT_PADDING * 2
 
-    const scaleX = boundsW > 0 ? availW / boundsW : 1
-    const scaleY = boundsH > 0 ? availH / boundsH : 1
-    const scale = Math.min(scaleX, scaleY, 1)
+    const scaleX = boundsW > 0 ? availW / boundsW : availW / FIT_PADDING
+    const scaleY = boundsH > 0 ? availH / boundsH : availH / FIT_PADDING
+    const scale = Math.min(scaleX, scaleY)
 
     const cx = (minX + maxX) / 2
     const cy = (minY + maxY) / 2
