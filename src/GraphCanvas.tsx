@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import type { GraphState, NodeId, Viewport } from './types'
 
-const NODE_RADIUS = 20
+const NODE_RADIUS = 12
 const NODE_FILL = '#5c6bc0'
 const NODE_FILL_HOVER = '#3949ab'
 const NODE_FILL_SELECTED = '#e53935'
