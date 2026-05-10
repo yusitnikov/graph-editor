@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import type { GraphState, NodeId } from './types'
+import { useRef, useState, useEffect } from 'react'
+import type { GraphState, NodeId, Viewport } from './types'
 
 const NODE_RADIUS = 20
 const NODE_FILL = '#5c6bc0'
@@ -17,9 +17,14 @@ const EDGE_STROKE_WIDTH = 2.5
 const EDGE_STROKE_WIDTH_SELECTED = 4
 const PREVIEW_STROKE = '#f57c00'
 const DRAG_THRESHOLD = 6
+const MIN_SCALE = 0.1
+const MAX_SCALE = 10
+
 
 interface Props {
   state: GraphState
+  viewport: Viewport
+  onViewportChange: (vp: Viewport) => void
   onCanvasClick: (x: number, y: number) => void
   onNodeClick: (id: NodeId) => void
   onEdgeClick: (id: string) => void
@@ -38,6 +43,8 @@ interface DragTracking {
 
 export function GraphCanvas({
   state,
+  viewport,
+  onViewportChange,
   onCanvasClick,
   onNodeClick,
   onEdgeClick,
@@ -49,29 +56,73 @@ export function GraphCanvas({
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null)
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
-  // dragTracking is a ref for gesture state (no render needed on every move)
   const dragTracking = useRef<DragTracking | null>(null)
-  // dragSourceId drives rendering — set to state so renders trigger correctly
   const [dragSourceId, setDragSourceId] = useState<NodeId | null>(null)
+  // Ref so the native wheel handler always sees current viewport without re-registering
+  const viewportRef = useRef(viewport)
+  viewportRef.current = viewport
+  const onViewportChangeRef = useRef(onViewportChange)
+  onViewportChangeRef.current = onViewportChange
 
-  const toSvgCoords = (clientX: number, clientY: number) => {
+  // Convert client coords → SVG element coords (ignoring viewport transform)
+  const toSvgElementCoords = (clientX: number, clientY: number) => {
     const svg = svgRef.current
     if (!svg) return { x: clientX, y: clientY }
     const rect = svg.getBoundingClientRect()
     return { x: clientX - rect.left, y: clientY - rect.top }
   }
 
-  const nodeAtPoint = (x: number, y: number): NodeId | null => {
+  // Convert client coords → world (graph) coords, accounting for viewport
+  const toWorldCoords = (clientX: number, clientY: number) => {
+    const { x: sx, y: sy } = toSvgElementCoords(clientX, clientY)
+    return {
+      x: (sx - viewport.x) / viewport.scale,
+      y: (sy - viewport.y) / viewport.scale,
+    }
+  }
+
+  const nodeAtPoint = (wx: number, wy: number): NodeId | null => {
+    // NODE_RADIUS is in screen pixels; convert to world-space radius for hit test
+    const worldRadius = NODE_RADIUS / viewport.scale
     for (const node of state.nodes) {
-      const dx = node.x - x
-      const dy = node.y - y
-      if (Math.sqrt(dx * dx + dy * dy) <= NODE_RADIUS) return node.id
+      const dx = node.x - wx
+      const dy = node.y - wy
+      if (Math.sqrt(dx * dx + dy * dy) <= worldRadius) return node.id
     }
     return null
   }
 
+  // Native non-passive wheel listener so preventDefault works
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const vp = viewportRef.current
+      const rect = svg.getBoundingClientRect()
+      const sx = e.clientX - rect.left
+      const sy = e.clientY - rect.top
+      if (e.ctrlKey || e.metaKey) {
+        // deltaMode 0 = pixels (trackpad pinch sends small values ~1–5)
+        // deltaMode 1 = lines, deltaMode 2 = pages (mouse wheel sends ~100 in pixel mode)
+        const delta = e.deltaMode === 0 && Math.abs(e.deltaY) < 50
+          ? e.deltaY * 10   // trackpad pinch: amplify the small pixel deltas
+          : e.deltaY        // mouse ctrl+wheel: use as-is
+        const zoomFactor = Math.pow(0.999, delta)
+        const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, vp.scale * zoomFactor))
+        const newX = sx - (sx - vp.x) * (newScale / vp.scale)
+        const newY = sy - (sy - vp.y) * (newScale / vp.scale)
+        onViewportChangeRef.current({ x: newX, y: newY, scale: newScale })
+      } else {
+        onViewportChangeRef.current({ ...vp, x: vp.x - e.deltaX, y: vp.y - e.deltaY })
+      }
+    }
+    svg.addEventListener('wheel', handleWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', handleWheel)
+  }, [])
+
   const handleSvgPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    const { x, y } = toSvgCoords(e.clientX, e.clientY)
+    const { x, y } = toWorldCoords(e.clientX, e.clientY)
     onPointerMove(x, y)
 
     const dt = dragTracking.current
@@ -99,7 +150,7 @@ export function GraphCanvas({
 
     if (!dt) return
 
-    const { x, y } = toSvgCoords(e.clientX, e.clientY)
+    const { x, y } = toWorldCoords(e.clientX, e.clientY)
 
     if (dt.dragging && state.mode === 'line-drawing') {
       const target = nodeAtPoint(x, y)
@@ -114,14 +165,14 @@ export function GraphCanvas({
 
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if ((e.target as SVGElement).closest('[data-interactive]')) return
-    const { x, y } = toSvgCoords(e.clientX, e.clientY)
+    const { x, y } = toWorldCoords(e.clientX, e.clientY)
     onCanvasClick(x, y)
   }
 
   const handleNodePointerDown = (e: React.PointerEvent, id: NodeId) => {
     e.stopPropagation()
     ;(e.currentTarget as SVGElement).releasePointerCapture(e.pointerId)
-    const { x, y } = toSvgCoords(e.clientX, e.clientY)
+    const { x, y } = toWorldCoords(e.clientX, e.clientY)
     dragTracking.current = { fromId: id, startX: x, startY: y, dragging: false }
   }
 
@@ -144,6 +195,12 @@ export function GraphCanvas({
   const isDragging = dragSourceId !== null && mode === 'line-drawing'
   const effectiveSource = lineDrawingFrom ?? dragSourceId
   const sourceNode = effectiveSource ? nodeMap.get(effectiveSource) : null
+
+  // Project a world-space point to screen space
+  const toScreen = (wx: number, wy: number) => ({
+    x: wx * viewport.scale + viewport.x,
+    y: wy * viewport.scale + viewport.y,
+  })
 
   return (
     <svg
@@ -173,6 +230,8 @@ export function GraphCanvas({
         if (!from || !to) return null
         const isSelected = selection?.type === 'edge' && selection.id === edge.id
         const isHovered = hoveredEdge === edge.id
+        const sf = toScreen(from.x, from.y)
+        const st = toScreen(to.x, to.y)
         return (
           <g
             key={edge.id}
@@ -185,14 +244,14 @@ export function GraphCanvas({
           >
             {/* invisible wide hit area */}
             <line
-              x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+              x1={sf.x} y1={sf.y} x2={st.x} y2={st.y}
               stroke="transparent"
               strokeWidth={20}
               strokeLinecap="round"
             />
             {/* visible line */}
             <line
-              x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+              x1={sf.x} y1={sf.y} x2={st.x} y2={st.y}
               stroke={
                 isSelected && isHovered ? EDGE_STROKE_SELECTED_HOVER
                 : isSelected ? EDGE_STROKE_SELECTED
@@ -208,19 +267,20 @@ export function GraphCanvas({
       })}
 
       {/* Preview line while drawing */}
-      {sourceNode && cursorPos && (
-        <line
-          x1={sourceNode.x}
-          y1={sourceNode.y}
-          x2={cursorPos.x}
-          y2={cursorPos.y}
-          stroke={PREVIEW_STROKE}
-          strokeWidth={2}
-          strokeDasharray="6 4"
-          strokeLinecap="round"
-          style={{ pointerEvents: 'none' }}
-        />
-      )}
+      {sourceNode && cursorPos && (() => {
+        const ss = toScreen(sourceNode.x, sourceNode.y)
+        const sc = toScreen(cursorPos.x, cursorPos.y)
+        return (
+          <line
+            x1={ss.x} y1={ss.y} x2={sc.x} y2={sc.y}
+            stroke={PREVIEW_STROKE}
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            strokeLinecap="round"
+            style={{ pointerEvents: 'none' }}
+          />
+        )
+      })()}
 
       {/* Nodes */}
       {state.nodes.map((node) => {
@@ -236,12 +296,13 @@ export function GraphCanvas({
         else if (isSelected) fill = NODE_FILL_SELECTED
         else if (isHovered) fill = NODE_FILL_HOVER
 
+        const sc = toScreen(node.x, node.y)
         return (
           <circle
             key={node.id}
             data-interactive="true"
-            cx={node.x}
-            cy={node.y}
+            cx={sc.x}
+            cy={sc.y}
             r={NODE_RADIUS}
             fill={fill}
             stroke={NODE_STROKE}

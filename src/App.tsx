@@ -3,12 +3,14 @@ import { CssBaseline, ThemeProvider, createTheme, Box } from '@mui/material'
 import { useGraphState } from './useGraphState'
 import { GraphCanvas } from './GraphCanvas'
 import { Toolbar } from './Toolbar'
+import type { Viewport } from './types'
 
 const theme = createTheme({ palette: { mode: 'dark' } })
 
 function App() {
   const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected } = useGraphState()
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
+  const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 })
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,6 +66,8 @@ function App() {
       <Box sx={{ position: 'fixed', inset: 0, overflow: 'hidden', bgcolor: '#1a1a2e' }}>
         <GraphCanvas
           state={state}
+          viewport={viewport}
+          onViewportChange={setViewport}
           onCanvasClick={handleCanvasClick}
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}

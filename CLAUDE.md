@@ -24,11 +24,11 @@ npm run preview  # preview production build
 
 ## Architecture
 
-- `src/types.ts` — shared types: `Node`, `Edge`, `GraphState`, `Mode`, `SelectionTarget`
+- `src/types.ts` — shared types: `Node`, `Edge`, `GraphState`, `Mode`, `SelectionTarget`, `Viewport`
 - `src/useGraphState.ts` — reducer-based graph state (nodes, edges, selection, mode, line drawing)
 - `src/GraphCanvas.tsx` — SVG canvas, all pointer interaction (click, drag-to-connect, hover)
 - `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + delete button when something is selected
-- `src/App.tsx` — root layout, wires state to canvas and UI, full-screen fixed dark background
+- `src/App.tsx` — root layout, wires state to canvas and UI, full-screen fixed dark background; holds `viewport` state (`x`, `y`, `scale`) and passes it to `GraphCanvas`
 
 ## Keyboard shortcuts
 
@@ -48,6 +48,7 @@ Keyboard handler lives in `App.tsx` (`useEffect` on `window`). Events from toolb
 - Edges have a wide invisible hit area (strokeWidth 20) for easier clicking.
 - Drag gesture uses a ref (`dragTracking`) for raw gesture state; a separate `dragSourceId` state drives rendering so React re-renders correctly.
 - Never read `ref.current` during render — use state for anything that affects the rendered output.
+- **Pan/zoom**: `wheel` events on the SVG handle panning (plain scroll / two-finger trackpad swipe) and zooming (pinch / ctrl+wheel). All graph content lives inside a `<g transform="translate(x,y) scale(s)">`. Node coordinates are stored in world space; `toWorldCoords` converts client coords by reversing the viewport transform. Stroke widths and hit areas are divided by `viewport.scale` to stay visually constant as you zoom.
 
 ## Key notes
 

@@ -20,6 +20,12 @@ export type SelectionTarget =
 
 export type Mode = 'default' | 'line-drawing'
 
+export interface Viewport {
+  x: number
+  y: number
+  scale: number
+}
+
 export interface GraphState {
   nodes: Node[]
   edges: Edge[]
