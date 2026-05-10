@@ -284,6 +284,7 @@ export function GraphCanvas({
         height: '100%',
         cursor: isDragging ? 'crosshair' : 'default',
         touchAction: 'none',
+        WebkitTapHighlightColor: 'transparent',
       }}
       onClick={handleSvgClick}
       onPointerMove={handleSvgPointerMove}
