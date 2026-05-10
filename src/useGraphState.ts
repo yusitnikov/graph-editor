@@ -11,6 +11,7 @@ type Action =
   | { type: 'CONNECT'; from: NodeId; to: NodeId }
   | { type: 'DELETE_SELECTED' }
   | { type: 'MOVE_NODE'; id: NodeId; x: number; y: number }
+  | { type: 'SET_NODE_COLOR'; id: NodeId; color: string }
 
 let nextId = 1
 const uid = () => String(nextId++)
@@ -29,7 +30,7 @@ function reducer(state: GraphState, action: Action): GraphState {
       const id = uid()
       return {
         ...state,
-        nodes: [...state.nodes, { id, x: action.x, y: action.y }],
+        nodes: [...state.nodes, { id, x: action.x, y: action.y, color: '#9e9e9e' }],
         selection: { type: 'node', id },
       }
     }
@@ -67,6 +68,11 @@ function reducer(state: GraphState, action: Action): GraphState {
       return {
         ...state,
         nodes: state.nodes.map((n) => n.id === action.id ? { ...n, x: action.x, y: action.y } : n),
+      }
+    case 'SET_NODE_COLOR':
+      return {
+        ...state,
+        nodes: state.nodes.map((n) => n.id === action.id ? { ...n, color: action.color } : n),
       }
     case 'DELETE_SELECTED': {
       const { selection } = state
@@ -121,6 +127,7 @@ export function useGraphState() {
   const connect = (from: NodeId, to: NodeId) => dispatch({ type: 'CONNECT', from, to })
   const deleteSelected = () => dispatch({ type: 'DELETE_SELECTED' })
   const moveNode = (id: NodeId, x: number, y: number) => dispatch({ type: 'MOVE_NODE', id, x, y })
+  const setNodeColor = (id: NodeId, color: string) => dispatch({ type: 'SET_NODE_COLOR', id, color })
 
-  return { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected, moveNode }
+  return { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected, moveNode, setNodeColor }
 }

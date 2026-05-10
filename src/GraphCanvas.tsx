@@ -50,7 +50,6 @@ export function GraphCanvas({
   const theme = useTheme()
   const p = theme.palette
 
-  const NODE_FILL = '#ffffff'
   const NODE_STROKE = p.grey[800]
   const EDGE_STROKE = p.grey[600]
   const PREVIEW_STROKE = EDGE_STROKE
@@ -357,7 +356,7 @@ export function GraphCanvas({
             cx={sc.x}
             cy={sc.y}
             r={NODE_RADIUS}
-            fill={NODE_FILL}
+            fill={node.color}
             stroke={NODE_STROKE}
             strokeWidth={2}
             style={{ cursor: 'pointer' }}

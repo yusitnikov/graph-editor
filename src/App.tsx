@@ -13,7 +13,7 @@ const TOOLBAR_CLEARANCE = 80
 const FIT_PADDING = 48
 
 function App() {
-  const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected, moveNode } = useGraphState()
+  const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected, moveNode, setNodeColor } = useGraphState()
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 })
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -89,7 +89,21 @@ function App() {
           onNodeDragConnect={handleNodeDragConnect}
           onNodeMove={moveNode}
         />
-        <Toolbar mode={state.mode} onChange={setMode} selection={state.selection} onDelete={deleteSelected} onFitView={state.nodes.length > 0 ? handleFitView : null} />
+        <Toolbar
+          mode={state.mode}
+          onChange={setMode}
+          selection={state.selection}
+          onDelete={deleteSelected}
+          onFitView={state.nodes.length > 0 ? handleFitView : null}
+          selectedNodeColor={
+            state.selection?.type === 'node'
+              ? (state.nodes.find((n) => n.id === state.selection!.id)?.color ?? null)
+              : null
+          }
+          onColorChange={(color) => {
+            if (state.selection?.type === 'node') setNodeColor(state.selection.id, color)
+          }}
+        />
       </Box>
     </ThemeProvider>
   )

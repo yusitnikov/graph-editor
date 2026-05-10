@@ -25,12 +25,13 @@ npm run preview  # preview production build
 
 ## Architecture
 
-- `src/types.ts` — shared types: `Node`, `Edge`, `GraphState`, `Mode`, `SelectionTarget`, `Viewport`
+- `src/types.ts` — shared types: `Node` (id, x, y, color), `Edge`, `GraphState`, `Mode`, `SelectionTarget`, `Viewport`
 - `src/viewport.ts` — pure functions: `toScreen`, `toWorldCoords`, `applyWheel`, `applyPan`, `applyPinch`, `fitView`. No React, no DOM side effects.
 - `src/attachPanZoom.ts` — attaches native wheel+touch listeners to an SVG element; returns a cleanup function. No React.
 - `src/useGraphState.ts` — reducer-based graph state (nodes, edges, selection, mode, line drawing)
 - `src/GraphCanvas.tsx` — SVG canvas, all pointer interaction (click, drag-to-connect, hover, pan, zoom)
-- `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + fit-view + delete. All buttons always visible; fit-view disabled when no nodes (`onFitView` prop is `null`), delete disabled when nothing selected (`selection` prop is `null`).
+- `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + fit-view + delete + node color picker. All buttons always visible; fit-view disabled when no nodes (`onFitView` prop is `null`), delete disabled when nothing selected (`selection` prop is `null`). Color picker dimmed and disabled when no node is selected.
+- `src/NodeColorPicker.tsx` — single swatch button that opens a `Popover` with color options. Reuses the `Swatch` component for both the trigger and the options. Selected swatch has a thicker `grey[400]` border; hover shows a `action.hover` outline; ripple disabled.
 - `src/App.tsx` — root layout, wires state to canvas and toolbar; holds `viewport` (`x`, `y`, `scale`) state; passes it to `GraphCanvas`
 
 ### GraphCanvas props
@@ -59,6 +60,7 @@ onNodeMove         (id, x, y) => void drag a node in default mode (world coords)
 - `CONNECT` — like FINISH_LINE but without requiring `lineDrawingFrom` (used for drag-connect)
 - `DELETE_SELECTED` — deletes selected node (and all its edges) or edge; clears selection
 - `MOVE_NODE` — updates node position in place
+- `SET_NODE_COLOR` — updates the `color` field of a node (hex string)
 
 Edges are **undirected** for deduplication: A→B blocks B→A.
 

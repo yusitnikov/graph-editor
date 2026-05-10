@@ -3,6 +3,7 @@ import NearMeIcon from '@mui/icons-material/NearMe'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import DeleteIcon from '@mui/icons-material/Delete'
 import FitScreenIcon from '@mui/icons-material/FitScreen'
+import { NodeColorPicker } from './NodeColorPicker'
 import type { Mode, SelectionTarget } from './types'
 
 interface Props {
@@ -11,9 +12,11 @@ interface Props {
   selection: SelectionTarget
   onDelete: () => void
   onFitView: (() => void) | null
+  selectedNodeColor: string | null
+  onColorChange: (color: string) => void
 }
 
-export function Toolbar({ mode, onChange, selection, onDelete, onFitView }: Props) {
+export function Toolbar({ mode, onChange, selection, onDelete, onFitView, selectedNodeColor, onColorChange }: Props) {
   return (
     <Box
       data-toolbar="true"
@@ -56,6 +59,8 @@ export function Toolbar({ mode, onChange, selection, onDelete, onFitView }: Prop
       <IconButton size="small" onClick={onDelete} disabled={!selection} aria-label="Delete selected">
         <DeleteIcon fontSize="small" />
       </IconButton>
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+      <NodeColorPicker color={selectedNodeColor} onChange={onColorChange} />
     </Box>
   )
 }

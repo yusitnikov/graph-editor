@@ -5,6 +5,7 @@ export interface Node {
   id: NodeId
   x: number
   y: number
+  color: string
 }
 
 export interface Edge {
