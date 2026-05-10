@@ -9,6 +9,7 @@ type Action =
   | { type: 'FINISH_LINE'; to: NodeId }
   | { type: 'CANCEL_LINE' }
   | { type: 'CONNECT'; from: NodeId; to: NodeId }
+  | { type: 'DELETE_SELECTED' }
 
 let nextId = 1
 const uid = () => String(nextId++)
@@ -61,6 +62,26 @@ function reducer(state: GraphState, action: Action): GraphState {
     }
     case 'CANCEL_LINE':
       return { ...state, lineDrawingFrom: null }
+    case 'DELETE_SELECTED': {
+      const { selection } = state
+      if (!selection) return state
+      if (selection.type === 'node') {
+        return {
+          ...state,
+          nodes: state.nodes.filter((n) => n.id !== selection.id),
+          edges: state.edges.filter((e) => e.from !== selection.id && e.to !== selection.id),
+          selection: null,
+        }
+      }
+      if (selection.type === 'edge') {
+        return {
+          ...state,
+          edges: state.edges.filter((e) => e.id !== selection.id),
+          selection: null,
+        }
+      }
+      return state
+    }
     case 'CONNECT': {
       if (action.from === action.to) return state
       const exists = state.edges.some(
@@ -92,6 +113,7 @@ export function useGraphState() {
   const finishLine = (to: NodeId) => dispatch({ type: 'FINISH_LINE', to })
   const cancelLine = () => dispatch({ type: 'CANCEL_LINE' })
   const connect = (from: NodeId, to: NodeId) => dispatch({ type: 'CONNECT', from, to })
+  const deleteSelected = () => dispatch({ type: 'DELETE_SELECTED' })
 
-  return { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect }
+  return { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected }
 }

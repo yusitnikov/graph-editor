@@ -11,6 +11,7 @@ interface Props {
 export function Toolbar({ mode, onChange }: Props) {
   return (
     <Box
+      data-toolbar="true"
       sx={{
         position: 'absolute',
         top: 16,

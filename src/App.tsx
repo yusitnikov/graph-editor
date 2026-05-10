@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CssBaseline, ThemeProvider, createTheme, Box } from '@mui/material'
 import { useGraphState } from './useGraphState'
 import { GraphCanvas } from './GraphCanvas'
@@ -8,8 +8,25 @@ import { StatusBar } from './StatusBar'
 const theme = createTheme({ palette: { mode: 'dark' } })
 
 function App() {
-  const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect } = useGraphState()
+  const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect, deleteSelected } = useGraphState()
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest('[data-toolbar]')) return
+      if (e.key === 'Escape') {
+        select(null)
+        cancelLine()
+      } else if (e.key === 'Tab') {
+        e.preventDefault()
+        setMode(state.mode === 'default' ? 'line-drawing' : 'default')
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        deleteSelected()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [state.mode, select, cancelLine, setMode, deleteSelected])
 
   const handleCanvasClick = (x: number, y: number) => {
     if (state.mode === 'default') {

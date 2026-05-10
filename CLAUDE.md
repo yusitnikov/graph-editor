@@ -31,6 +31,14 @@ npm run preview  # preview production build
 - `src/StatusBar.tsx` — bottom bar with contextual hints and node/edge counts
 - `src/App.tsx` — root layout, wires state to canvas and UI, full-screen fixed dark background
 
+## Keyboard shortcuts
+
+- **Escape** — clear selection and cancel any in-progress line draw
+- **Tab** — toggle between default and line-drawing modes (prevented from default browser focus behavior)
+- **Delete / Backspace** — delete the currently selected node (and its connected edges) or edge
+
+Keyboard handler lives in `App.tsx` (`useEffect` on `window`). Events from toolbar buttons (focused via `[data-toolbar]`) are ignored so Tab still works normally inside the toolbar.
+
 ## Graph editor behaviour
 
 - Two modes: **default** and **line-drawing**, toggled via the Toolbar.
