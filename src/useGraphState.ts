@@ -8,6 +8,7 @@ type Action =
   | { type: 'START_LINE'; from: NodeId }
   | { type: 'FINISH_LINE'; to: NodeId }
   | { type: 'CANCEL_LINE' }
+  | { type: 'CONNECT'; from: NodeId; to: NodeId }
 
 let nextId = 1
 const uid = () => String(nextId++)
@@ -56,6 +57,20 @@ function reducer(state: GraphState, action: Action): GraphState {
     }
     case 'CANCEL_LINE':
       return { ...state, lineDrawingFrom: null }
+    case 'CONNECT': {
+      if (action.from === action.to) return state
+      const exists = state.edges.some(
+        (e) =>
+          (e.from === action.from && e.to === action.to) ||
+          (e.from === action.to && e.to === action.from),
+      )
+      if (exists) return state
+      return {
+        ...state,
+        edges: [...state.edges, { id: uid(), from: action.from, to: action.to }],
+        lineDrawingFrom: null,
+      }
+    }
     default:
       return state
   }
@@ -70,6 +85,7 @@ export function useGraphState() {
   const startLine = (from: NodeId) => dispatch({ type: 'START_LINE', from })
   const finishLine = (to: NodeId) => dispatch({ type: 'FINISH_LINE', to })
   const cancelLine = () => dispatch({ type: 'CANCEL_LINE' })
+  const connect = (from: NodeId, to: NodeId) => dispatch({ type: 'CONNECT', from, to })
 
-  return { state, addNode, select, setMode, startLine, finishLine, cancelLine }
+  return { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect }
 }

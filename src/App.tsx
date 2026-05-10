@@ -8,7 +8,7 @@ import { StatusBar } from './StatusBar'
 const theme = createTheme({ palette: { mode: 'dark' } })
 
 function App() {
-  const { state, addNode, select, setMode, startLine, finishLine, cancelLine } = useGraphState()
+  const { state, addNode, select, setMode, startLine, finishLine, cancelLine, connect } = useGraphState()
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
 
   const handleCanvasClick = (x: number, y: number) => {
@@ -43,6 +43,10 @@ function App() {
     }
   }
 
+  const handleNodeDragConnect = (from: string, to: string) => {
+    connect(from, to)
+  }
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -52,6 +56,7 @@ function App() {
           onCanvasClick={handleCanvasClick}
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          onNodeDragConnect={handleNodeDragConnect}
           cursorPos={cursorPos}
           onPointerMove={(x, y) => setCursorPos({ x, y })}
           onPointerLeave={() => setCursorPos(null)}

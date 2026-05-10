@@ -6,21 +6,31 @@ const NODE_FILL = '#5c6bc0'
 const NODE_FILL_HOVER = '#3949ab'
 const NODE_FILL_SELECTED = '#e53935'
 const NODE_FILL_LINE_SOURCE = '#f57c00'
+const NODE_FILL_DRAG_TARGET = '#00897b'
 const NODE_STROKE = '#fff'
 const EDGE_STROKE = '#90a4ae'
 const EDGE_STROKE_SELECTED = '#e53935'
 const EDGE_STROKE_WIDTH = 2.5
 const EDGE_STROKE_WIDTH_SELECTED = 4
 const PREVIEW_STROKE = '#f57c00'
+const DRAG_THRESHOLD = 6
 
 interface Props {
   state: GraphState
   onCanvasClick: (x: number, y: number) => void
   onNodeClick: (id: NodeId) => void
   onEdgeClick: (id: string) => void
+  onNodeDragConnect: (from: NodeId, to: NodeId) => void
   cursorPos: { x: number; y: number } | null
   onPointerMove: (x: number, y: number) => void
   onPointerLeave: () => void
+}
+
+interface DragState {
+  fromId: NodeId
+  startX: number
+  startY: number
+  dragging: boolean
 }
 
 export function GraphCanvas({
@@ -28,6 +38,7 @@ export function GraphCanvas({
   onCanvasClick,
   onNodeClick,
   onEdgeClick,
+  onNodeDragConnect,
   cursorPos,
   onPointerMove,
   onPointerLeave,
@@ -35,6 +46,7 @@ export function GraphCanvas({
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null)
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
+  const dragRef = useRef<DragState | null>(null)
 
   const toSvgCoords = (clientX: number, clientY: number) => {
     const svg = svgRef.current
@@ -43,9 +55,50 @@ export function GraphCanvas({
     return { x: clientX - rect.left, y: clientY - rect.top }
   }
 
+  const nodeAtPoint = (x: number, y: number): NodeId | null => {
+    for (const node of state.nodes) {
+      const dx = node.x - x
+      const dy = node.y - y
+      if (Math.sqrt(dx * dx + dy * dy) <= NODE_RADIUS) return node.id
+    }
+    return null
+  }
+
   const handleSvgPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const { x, y } = toSvgCoords(e.clientX, e.clientY)
     onPointerMove(x, y)
+
+    if (dragRef.current && !dragRef.current.dragging && state.mode === 'line-drawing') {
+      const dx = x - dragRef.current.startX
+      const dy = y - dragRef.current.startY
+      if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+        dragRef.current.dragging = true
+      }
+    }
+
+    if (dragRef.current?.dragging) {
+      const target = nodeAtPoint(x, y)
+      setHoveredNode(target !== dragRef.current.fromId ? (target ?? null) : null)
+    }
+  }
+
+  const handleSvgPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    const drag = dragRef.current
+    dragRef.current = null
+
+    if (!drag) return
+
+    const { x, y } = toSvgCoords(e.clientX, e.clientY)
+
+    if (drag.dragging && state.mode === 'line-drawing') {
+      const target = nodeAtPoint(x, y)
+      if (target && target !== drag.fromId) {
+        onNodeDragConnect(drag.fromId, target)
+      }
+      setHoveredNode(null)
+    } else {
+      onNodeClick(drag.fromId)
+    }
   }
 
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -56,7 +109,9 @@ export function GraphCanvas({
 
   const handleNodePointerDown = (e: React.PointerEvent, id: NodeId) => {
     e.stopPropagation()
-    onNodeClick(id)
+    ;(e.currentTarget as SVGElement).releasePointerCapture(e.pointerId)
+    const { x, y } = toSvgCoords(e.clientX, e.clientY)
+    dragRef.current = { fromId: id, startX: x, startY: y, dragging: false }
   }
 
   const handleEdgePointerDown = (e: React.PointerEvent, id: string) => {
@@ -67,22 +122,31 @@ export function GraphCanvas({
   const nodeMap = new Map(state.nodes.map((n) => [n.id, n]))
   const { lineDrawingFrom, selection, mode } = state
 
-  const sourceNode = lineDrawingFrom ? nodeMap.get(lineDrawingFrom) : null
-
-  const getCursorStyle = () => {
-    if (mode === 'line-drawing') {
-      return lineDrawingFrom ? 'crosshair' : 'default'
-    }
-    return 'default'
-  }
+  const isDragging = (dragRef.current?.dragging ?? false) && mode === 'line-drawing'
+  const dragSourceId = isDragging ? dragRef.current?.fromId ?? null : null
+  const effectiveSource = lineDrawingFrom ?? dragSourceId
+  const sourceNode = effectiveSource ? nodeMap.get(effectiveSource) : null
 
   return (
     <svg
       ref={svgRef}
-      style={{ width: '100%', height: '100%', cursor: getCursorStyle(), touchAction: 'none' }}
+      style={{
+        width: '100%',
+        height: '100%',
+        cursor: isDragging ? 'crosshair' : 'default',
+        touchAction: 'none',
+      }}
       onClick={handleSvgClick}
       onPointerMove={handleSvgPointerMove}
-      onPointerLeave={onPointerLeave}
+      onPointerUp={handleSvgPointerUp}
+      onPointerLeave={(e) => {
+        if (dragRef.current) {
+          dragRef.current = null
+          setHoveredNode(null)
+        }
+        onPointerLeave()
+        void e
+      }}
     >
       {/* Edges */}
       {state.edges.map((edge) => {
@@ -128,11 +192,13 @@ export function GraphCanvas({
       {/* Nodes */}
       {state.nodes.map((node) => {
         const isSelected = selection?.type === 'node' && selection.id === node.id
-        const isSource = lineDrawingFrom === node.id
+        const isSource = effectiveSource === node.id
         const isHovered = hoveredNode === node.id
+        const isDragTarget = isDragging && isHovered && node.id !== dragRef.current?.fromId
 
         let fill = NODE_FILL
-        if (isSource) fill = NODE_FILL_LINE_SOURCE
+        if (isDragTarget) fill = NODE_FILL_DRAG_TARGET
+        else if (isSource) fill = NODE_FILL_LINE_SOURCE
         else if (isSelected) fill = NODE_FILL_SELECTED
         else if (isHovered) fill = NODE_FILL_HOVER
 
@@ -148,8 +214,8 @@ export function GraphCanvas({
             strokeWidth={2}
             style={{ cursor: 'pointer' }}
             onPointerDown={(e) => handleNodePointerDown(e, node.id)}
-            onPointerEnter={() => setHoveredNode(node.id)}
-            onPointerLeave={() => setHoveredNode(null)}
+            onPointerEnter={() => !isDragging && setHoveredNode(node.id)}
+            onPointerLeave={() => !isDragging && setHoveredNode(null)}
           />
         )
       })}
