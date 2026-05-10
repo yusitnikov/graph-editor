@@ -1,10 +1,9 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, type PointerEvent, type MouseEvent } from 'react'
 import { useTheme } from '@mui/material'
 import type { GraphState, NodeId, Viewport } from './types'
 
 const NODE_RADIUS = 12
 const EDGE_STROKE_WIDTH = 2.5
-const EDGE_STROKE_WIDTH_SELECTED = 4
 const DRAG_THRESHOLD = 6
 const MIN_SCALE = 0.1
 const MAX_SCALE = 10
@@ -58,17 +57,10 @@ export function GraphCanvas({
   const p = theme.palette
 
   const NODE_FILL = p.primary.main
-  const NODE_FILL_HOVER = p.primary.dark
-  const NODE_FILL_SELECTED = p.secondary.main
-  const NODE_FILL_SELECTED_HOVER = p.secondary.dark
-  const NODE_FILL_LINE_SOURCE = p.secondary.main
-  const NODE_FILL_DRAG_TARGET = p.secondary.main
   const NODE_STROKE = p.grey[800]
   const EDGE_STROKE = p.grey[600]
-  const EDGE_STROKE_HOVER = p.grey[700]
-  const EDGE_STROKE_SELECTED = p.secondary.main
-  const EDGE_STROKE_SELECTED_HOVER = p.secondary.dark
   const PREVIEW_STROKE = p.secondary.light
+  const OUTLINE_COLOR = p.grey[400]
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null)
@@ -219,7 +211,7 @@ export function GraphCanvas({
     }
   }, [])
 
-  const handleSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+  const handleSvgPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     if ((e.target as SVGElement).closest('[data-interactive]')) return
     // Touch-based pan is handled by the native touch handlers; skip touch pointers here
     if (e.pointerType === 'touch') return
@@ -228,7 +220,7 @@ export function GraphCanvas({
     ;(e.currentTarget as SVGElement).setPointerCapture(e.pointerId)
   }
 
-  const handleSvgPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+  const handleSvgPointerMove = (e: PointerEvent<SVGSVGElement>) => {
     const { x, y } = toWorldCoords(e.clientX, e.clientY)
     onPointerMove(x, y)
 
@@ -266,7 +258,7 @@ export function GraphCanvas({
     }
   }
 
-  const handleSvgPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+  const handleSvgPointerUp = (e: PointerEvent<SVGSVGElement>) => {
     if (panTracking.current) {
       panTracking.current = null
       // didPan.current stays set until handleSvgClick consumes it
@@ -300,7 +292,7 @@ export function GraphCanvas({
     }
   }
 
-  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+  const handleSvgClick = (e: MouseEvent<SVGSVGElement>) => {
     if ((e.target as SVGElement).closest('[data-interactive]')) return
     if (didPan.current) { didPan.current = false; return }
     if (didNodeDrag.current) { didNodeDrag.current = false; return }
@@ -308,7 +300,7 @@ export function GraphCanvas({
     onCanvasClick(x, y)
   }
 
-  const handleNodePointerDown = (e: React.PointerEvent, id: NodeId) => {
+  const handleNodePointerDown = (e: PointerEvent, id: NodeId) => {
     e.stopPropagation()
     // Transfer capture to the SVG so pointer events keep firing there even when the
     // pointer leaves the node, goes over the toolbar, or exits the window bounds.
@@ -320,15 +312,15 @@ export function GraphCanvas({
     dragTracking.current = { fromId: id, startX: x, startY: y, dragging: false, offsetX, offsetY }
   }
 
-  const handleNodeClick = (e: React.MouseEvent) => {
+  const handleNodeClick = (e: MouseEvent) => {
     e.stopPropagation()
   }
 
-  const handleEdgePointerDown = (e: React.PointerEvent) => {
+  const handleEdgePointerDown = (e: PointerEvent) => {
     e.stopPropagation()
   }
 
-  const handleEdgeClick = (e: React.MouseEvent, id: string) => {
+  const handleEdgeClick = (e: MouseEvent, id: string) => {
     e.stopPropagation()
     onEdgeClick(id)
   }
@@ -373,13 +365,58 @@ export function GraphCanvas({
         onPointerLeave()
       }}
     >
-      {/* Edges */}
+      {/* Edge outlines (rendered before everything else) */}
       {state.edges.map((edge) => {
         const from = nodeMap.get(edge.from)
         const to = nodeMap.get(edge.to)
         if (!from || !to) return null
         const isSelected = selection?.type === 'edge' && selection.id === edge.id
         const isHovered = hoveredEdge === edge.id
+        if (!isSelected && !isHovered) return null
+        const sf = toScreen(from.x, from.y)
+        const st = toScreen(to.x, to.y)
+        return (
+          <line
+            key={edge.id}
+            x1={sf.x} y1={sf.y} x2={st.x} y2={st.y}
+            stroke={OUTLINE_COLOR}
+            strokeWidth={12}
+            strokeLinecap="round"
+            strokeOpacity={isSelected ? 0.7 : 0.4}
+            style={{ pointerEvents: 'none' }}
+          />
+        )
+      })}
+
+      {/* Node outlines (rendered before main elements) */}
+      {state.nodes.map((node) => {
+        const isSelected = selection?.type === 'node' && selection.id === node.id
+        const isSource = effectiveSource === node.id
+        const isHovered = hoveredNode === node.id
+        const isDragTarget = isDragging && isHovered && node.id !== dragSourceId
+        if (!isSelected && !isSource && !isHovered && !isDragTarget) return null
+        const isActive = isSelected || isSource || isDragTarget
+        const sc = toScreen(node.x, node.y)
+        return (
+          <circle
+            key={node.id}
+            cx={sc.x}
+            cy={sc.y}
+            r={NODE_RADIUS}
+            fill="none"
+            stroke={OUTLINE_COLOR}
+            strokeWidth={10}
+            strokeOpacity={isActive ? 0.7 : 0.4}
+            style={{ pointerEvents: 'none' }}
+          />
+        )
+      })}
+
+      {/* Edges */}
+      {state.edges.map((edge) => {
+        const from = nodeMap.get(edge.from)
+        const to = nodeMap.get(edge.to)
+        if (!from || !to) return null
         const sf = toScreen(from.x, from.y)
         const st = toScreen(to.x, to.y)
         return (
@@ -399,16 +436,10 @@ export function GraphCanvas({
               strokeWidth={20}
               strokeLinecap="round"
             />
-            {/* visible line */}
             <line
               x1={sf.x} y1={sf.y} x2={st.x} y2={st.y}
-              stroke={
-                isSelected && isHovered ? EDGE_STROKE_SELECTED_HOVER
-                : isSelected ? EDGE_STROKE_SELECTED
-                : isHovered ? EDGE_STROKE_HOVER
-                : EDGE_STROKE
-              }
-              strokeWidth={isSelected || isHovered ? EDGE_STROKE_WIDTH_SELECTED : EDGE_STROKE_WIDTH}
+              stroke={EDGE_STROKE}
+              strokeWidth={EDGE_STROKE_WIDTH}
               strokeLinecap="round"
               style={{ pointerEvents: 'none' }}
             />
@@ -434,18 +465,6 @@ export function GraphCanvas({
 
       {/* Nodes */}
       {state.nodes.map((node) => {
-        const isSelected = selection?.type === 'node' && selection.id === node.id
-        const isSource = effectiveSource === node.id
-        const isHovered = hoveredNode === node.id
-        const isDragTarget = isDragging && isHovered && node.id !== dragSourceId
-
-        let fill = NODE_FILL
-        if (isDragTarget) fill = NODE_FILL_DRAG_TARGET
-        else if (isSource) fill = NODE_FILL_LINE_SOURCE
-        else if (isSelected && isHovered) fill = NODE_FILL_SELECTED_HOVER
-        else if (isSelected) fill = NODE_FILL_SELECTED
-        else if (isHovered) fill = NODE_FILL_HOVER
-
         const sc = toScreen(node.x, node.y)
         return (
           <circle
@@ -454,7 +473,7 @@ export function GraphCanvas({
             cx={sc.x}
             cy={sc.y}
             r={NODE_RADIUS}
-            fill={fill}
+            fill={NODE_FILL}
             stroke={NODE_STROKE}
             strokeWidth={2}
             style={{ cursor: 'pointer' }}
