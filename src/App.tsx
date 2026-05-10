@@ -3,7 +3,6 @@ import { CssBaseline, ThemeProvider, createTheme, Box } from '@mui/material'
 import { useGraphState } from './useGraphState'
 import { GraphCanvas } from './GraphCanvas'
 import { Toolbar } from './Toolbar'
-import { StatusBar } from './StatusBar'
 
 const theme = createTheme({ palette: { mode: 'dark' } })
 
@@ -74,7 +73,6 @@ function App() {
           onPointerLeave={() => setCursorPos(null)}
         />
         <Toolbar mode={state.mode} onChange={setMode} selection={state.selection} onDelete={deleteSelected} />
-        <StatusBar state={state} />
       </Box>
     </ThemeProvider>
   )

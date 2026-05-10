@@ -27,8 +27,7 @@ npm run preview  # preview production build
 - `src/types.ts` — shared types: `Node`, `Edge`, `GraphState`, `Mode`, `SelectionTarget`
 - `src/useGraphState.ts` — reducer-based graph state (nodes, edges, selection, mode, line drawing)
 - `src/GraphCanvas.tsx` — SVG canvas, all pointer interaction (click, drag-to-connect, hover)
-- `src/Toolbar.tsx` — floating mode toggle (Default / Line Drawing)
-- `src/StatusBar.tsx` — bottom bar with contextual hints and node/edge counts
+- `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + delete button when something is selected
 - `src/App.tsx` — root layout, wires state to canvas and UI, full-screen fixed dark background
 
 ## Keyboard shortcuts
