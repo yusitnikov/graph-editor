@@ -1,12 +1,11 @@
 import { useRef, useState, useEffect, type PointerEvent, type MouseEvent } from 'react'
 import { useTheme } from '@mui/material'
 import type { GraphState, NodeId, Viewport } from './types'
+import { toScreen as _toScreen, toWorldCoords as _toWorldCoords, applyWheel, applyPan, applyPinch } from './viewport'
 
 const NODE_RADIUS = 12
 const EDGE_STROKE_WIDTH = 2.5
 const DRAG_THRESHOLD = 6
-const MIN_SCALE = 0.1
-const MAX_SCALE = 10
 
 
 interface Props {
@@ -82,22 +81,10 @@ export function GraphCanvas({
   // eslint-disable-next-line react-hooks/refs
   stateRef.current = state
 
-  // Convert client coords → SVG element coords (ignoring viewport transform)
-  const toSvgElementCoords = (clientX: number, clientY: number) => {
-    const svg = svgRef.current
-    if (!svg) return { x: clientX, y: clientY }
-    const rect = svg.getBoundingClientRect()
-    return { x: clientX - rect.left, y: clientY - rect.top }
-  }
+  const getSvgRect = () => svgRef.current?.getBoundingClientRect() ?? new DOMRect()
 
-  // Convert client coords → world (graph) coords, accounting for viewport
-  const toWorldCoords = (clientX: number, clientY: number) => {
-    const { x: sx, y: sy } = toSvgElementCoords(clientX, clientY)
-    return {
-      x: (sx - viewport.x) / viewport.scale,
-      y: (sy - viewport.y) / viewport.scale,
-    }
-  }
+  const toWorldCoords = (clientX: number, clientY: number) =>
+    _toWorldCoords(clientX, clientY, getSvgRect(), viewport)
 
   const nodeAtPoint = (wx: number, wy: number): NodeId | null => {
     // NODE_RADIUS is in screen pixels; convert to world-space radius for hit test
@@ -117,24 +104,7 @@ export function GraphCanvas({
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const vp = viewportRef.current
-      const rect = svg.getBoundingClientRect()
-      const sx = e.clientX - rect.left
-      const sy = e.clientY - rect.top
-      if (e.ctrlKey || e.metaKey) {
-        // deltaMode 0 = pixels (trackpad pinch sends small values ~1–5)
-        // deltaMode 1 = lines, deltaMode 2 = pages (mouse wheel sends ~100 in pixel mode)
-        const delta = e.deltaMode === 0 && Math.abs(e.deltaY) < 50
-          ? e.deltaY * 10
-          : e.deltaY
-        const zoomFactor = Math.pow(0.999, delta)
-        const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, vp.scale * zoomFactor))
-        const newX = sx - (sx - vp.x) * (newScale / vp.scale)
-        const newY = sy - (sy - vp.y) * (newScale / vp.scale)
-        onViewportChangeRef.current({ x: newX, y: newY, scale: newScale })
-      } else {
-        onViewportChangeRef.current({ ...vp, x: vp.x - e.deltaX, y: vp.y - e.deltaY })
-      }
+      onViewportChangeRef.current(applyWheel(e, svg.getBoundingClientRect(), viewportRef.current))
     }
 
     // last touch positions, keyed by identifier
@@ -158,16 +128,13 @@ export function GraphCanvas({
       e.preventDefault()
       const rect = svg.getBoundingClientRect()
       const vp = viewportRef.current
-      // Only consider non-interactive touches for pan/zoom
       const active = Array.from(e.touches).filter(t => !interactiveTouches.has(t.identifier))
 
       if (active.length === 1) {
         const t = active[0]
         const prev = lastTouches.get(t.identifier)
         if (prev) {
-          const dx = t.clientX - prev.x
-          const dy = t.clientY - prev.y
-          onViewportChangeRef.current({ ...vp, x: vp.x + dx, y: vp.y + dy })
+          onViewportChangeRef.current(applyPan(t.clientX - prev.x, t.clientY - prev.y, vp))
         }
         lastTouches.set(t.identifier, { x: t.clientX, y: t.clientY })
       } else if (active.length >= 2) {
@@ -176,16 +143,7 @@ export function GraphCanvas({
         const prev0 = lastTouches.get(t0.identifier)
         const prev1 = lastTouches.get(t1.identifier)
         if (prev0 && prev1) {
-          const prevDist = Math.hypot(prev1.x - prev0.x, prev1.y - prev0.y)
-          const newDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
-          if (prevDist > 0) {
-            const midX = (t0.clientX + t1.clientX) / 2 - rect.left
-            const midY = (t0.clientY + t1.clientY) / 2 - rect.top
-            const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, vp.scale * (newDist / prevDist)))
-            const newX = midX - (midX - vp.x) * (newScale / vp.scale)
-            const newY = midY - (midY - vp.y) * (newScale / vp.scale)
-            onViewportChangeRef.current({ x: newX, y: newY, scale: newScale })
-          }
+          onViewportChangeRef.current(applyPinch(t0, t1, prev0, prev1, rect, vp))
         }
         lastTouches.set(t0.identifier, { x: t0.clientX, y: t0.clientY })
         lastTouches.set(t1.identifier, { x: t1.clientX, y: t1.clientY })
@@ -333,11 +291,7 @@ export function GraphCanvas({
   const effectiveSource = lineDrawingFrom ?? dragSourceId
   const sourceNode = effectiveSource ? nodeMap.get(effectiveSource) : null
 
-  // Project a world-space point to screen space
-  const toScreen = (wx: number, wy: number) => ({
-    x: wx * viewport.scale + viewport.x,
-    y: wy * viewport.scale + viewport.y,
-  })
+  const toScreen = (wx: number, wy: number) => _toScreen(wx, wy, viewport)
 
   return (
     <svg

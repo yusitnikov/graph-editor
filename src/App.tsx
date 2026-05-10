@@ -3,6 +3,7 @@ import { CssBaseline, ThemeProvider, createTheme, Box } from '@mui/material'
 import { useGraphState } from './useGraphState'
 import { GraphCanvas } from './GraphCanvas'
 import { Toolbar } from './Toolbar'
+import { fitView } from './viewport'
 import type { Viewport } from './types'
 
 const theme = createTheme({ palette: { mode: 'light' } })
@@ -34,36 +35,14 @@ function App() {
   }, [state.mode, select, cancelLine, setMode, deleteSelected])
 
   const handleFitView = useCallback(() => {
-    const nodes = state.nodes
-    if (nodes.length === 0) return
-
     const container = containerRef.current
-    const cw = container ? container.clientWidth : window.innerWidth
-    const ch = container ? container.clientHeight : window.innerHeight
-
-    const minX = Math.min(...nodes.map(n => n.x))
-    const maxX = Math.max(...nodes.map(n => n.x))
-    const minY = Math.min(...nodes.map(n => n.y))
-    const maxY = Math.max(...nodes.map(n => n.y))
-
-    const boundsW = maxX - minX
-    const boundsH = maxY - minY
-
-    const availW = cw - FIT_PADDING * 2
-    const availH = ch - TOOLBAR_CLEARANCE - FIT_PADDING * 2
-
-    const scaleX = boundsW > 0 ? availW / boundsW : availW / FIT_PADDING
-    const scaleY = boundsH > 0 ? availH / boundsH : availH / FIT_PADDING
-    const scale = Math.min(scaleX, scaleY)
-
-    const cx = (minX + maxX) / 2
-    const cy = (minY + maxY) / 2
-
-    setViewport({
-      x: cw / 2 - cx * scale,
-      y: (ch + TOOLBAR_CLEARANCE) / 2 - cy * scale,
-      scale,
+    const vp = fitView(state.nodes, {
+      canvasWidth: container ? container.clientWidth : window.innerWidth,
+      canvasHeight: container ? container.clientHeight : window.innerHeight,
+      toolbarClearance: TOOLBAR_CLEARANCE,
+      padding: FIT_PADDING,
     })
+    if (vp) setViewport(vp)
   }, [state.nodes])
 
   const handleCanvasClick = (x: number, y: number) => {

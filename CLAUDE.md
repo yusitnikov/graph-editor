@@ -26,10 +26,43 @@ npm run preview  # preview production build
 ## Architecture
 
 - `src/types.ts` — shared types: `Node`, `Edge`, `GraphState`, `Mode`, `SelectionTarget`, `Viewport`
+- `src/viewport.ts` — pure functions: `toScreen`, `toWorldCoords`, `applyWheel`, `applyPan`, `applyPinch`, `fitView`. No React, no DOM side effects.
 - `src/useGraphState.ts` — reducer-based graph state (nodes, edges, selection, mode, line drawing)
-- `src/GraphCanvas.tsx` — SVG canvas, all pointer interaction (click, drag-to-connect, hover)
-- `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + fit-view button (when nodes exist) + delete button when something is selected
-- `src/App.tsx` — root layout, wires state to canvas and UI, full-screen fixed dark background; holds `viewport` state (`x`, `y`, `scale`) and passes it to `GraphCanvas`
+- `src/GraphCanvas.tsx` — SVG canvas, all pointer interaction (click, drag-to-connect, hover, pan, zoom)
+- `src/Toolbar.tsx` — floating toolbar: mode toggle (Default / Line Drawing) + fit-view + delete. All buttons always visible; fit-view disabled when no nodes (`onFitView` prop is `null`), delete disabled when nothing selected (`selection` prop is `null`).
+- `src/App.tsx` — root layout, wires state to canvas and toolbar; holds `viewport` (`x`, `y`, `scale`) state; passes it to `GraphCanvas`
+
+### GraphCanvas props
+
+```
+state              GraphState        full graph state
+viewport           Viewport          current pan/zoom
+onViewportChange   (vp) => void      pan/zoom updates
+onCanvasClick      (x, y) => void    click on empty space (world coords)
+onNodeClick        (id) => void      click on a node
+onEdgeClick        (id) => void      click on an edge
+onNodeDragConnect  (from, to) => void drag from node to node in line-drawing mode
+onNodeMove         (id, x, y) => void drag a node in default mode (world coords)
+cursorPos          {x,y}|null        current pointer in world coords (for preview line)
+onPointerMove      (x, y) => void    pointer moved over canvas (world coords)
+onPointerLeave     () => void        pointer left canvas
+```
+
+> Note: `cursorPos`, `onPointerMove`, `onPointerLeave` will be removed once task 3 is complete (cursorPos moves into GraphCanvas).
+
+### useGraphState actions
+
+- `ADD_NODE` — adds node, auto-selects it
+- `SELECT` — sets selection (pass `null` to clear)
+- `SET_MODE` — changes mode, clears `lineDrawingFrom` and `selection` as side effects
+- `START_LINE` — sets `lineDrawingFrom`, clears selection
+- `FINISH_LINE` — completes edge if target differs from source and edge doesn't exist; clears `lineDrawingFrom`; auto-selects new edge
+- `CANCEL_LINE` — clears `lineDrawingFrom` only
+- `CONNECT` — like FINISH_LINE but without requiring `lineDrawingFrom` (used for drag-connect)
+- `DELETE_SELECTED` — deletes selected node (and all its edges) or edge; clears selection
+- `MOVE_NODE` — updates node position in place
+
+Edges are **undirected** for deduplication: A→B blocks B→A.
 
 ## Keyboard shortcuts
 
@@ -49,7 +82,12 @@ Keyboard handler lives in `App.tsx` (`useEffect` on `window`). All shortcuts wor
 - Edges have a wide invisible hit area (strokeWidth 20) for easier clicking.
 - Drag gesture uses a ref (`dragTracking`) for raw gesture state; separate `dragSourceId` and `movingNodeId` states drive rendering so React re-renders correctly.
 - Never read `ref.current` during render — use state for anything that affects the rendered output.
-- **Pan/zoom**: viewport state (`x`, `y`, `scale`) lives in `App.tsx`. All positions are projected to screen space via `toScreen()` before rendering — sizes (radii, stroke widths) are always fixed screen-pixel constants, so zoom moves positions only. Native (non-passive) `wheel` handles trackpad/mouse pan+zoom; native `touchstart`/`touchmove`/`touchend` handle one-finger pan and two-finger pinch-zoom on mobile. Touches that start on `[data-interactive]` elements are excluded from pan/zoom and handled by pointer events instead.
+- **Pan/zoom**: viewport state (`x`, `y`, `scale`) lives in `App.tsx`. All positions are projected to screen space via `toScreen()` from `viewport.ts` before rendering — sizes (radii, stroke widths) are always fixed screen-pixel constants, so zoom moves positions only. Native (non-passive) `wheel` handles trackpad/mouse pan+zoom; native `touchstart`/`touchmove`/`touchend` handle one-finger pan and two-finger pinch-zoom on mobile. Math for all of these lives in `viewport.ts` (`applyWheel`, `applyPan`, `applyPinch`).
+- **`data-interactive`** attribute is set on node and edge elements. Both the native touch handler and the SVG `onPointerDown` pan handler check for it and skip pan/zoom when the pointer started on an interactive element.
+- **Stale-ref pattern**: `viewportRef` and `onViewportChangeRef` mirror their props into refs so native event handlers (wheel, touch) always see current values without needing to re-register on every render.
+- **`DRAG_THRESHOLD`** (6px): for canvas pan it's in screen pixels; for node-drag it's in world coords. Same constant, different coordinate spaces.
+- **SVG render order**: edge outlines → node outlines → edges → preview line → nodes. Outlines only render for selected or hovered elements; all have `pointerEvents: none`.
+- **`cursorPos`** is tracked in world coordinates in `App.tsx` and passed to `GraphCanvas` solely to render the dashed preview line while drawing an edge. (Will move into `GraphCanvas` in task 3.)
 
 ## Key notes
 
