@@ -4,6 +4,8 @@ An interactive browser-based tool for drawing and exploring graphs.
 
 Place nodes on a canvas, connect them with edges, and rearrange them freely. Supports both mouse and touch input, including pinch-to-zoom on mobile.
 
+![screenshot](screenshot.png)
+
 ## Features
 
 - Add nodes by clicking empty space
