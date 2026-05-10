@@ -23,12 +23,14 @@ const initialState: GraphState = {
 
 function reducer(state: GraphState, action: Action): GraphState {
   switch (action.type) {
-    case 'ADD_NODE':
+    case 'ADD_NODE': {
+      const id = uid()
       return {
         ...state,
-        nodes: [...state.nodes, { id: uid(), x: action.x, y: action.y }],
-        selection: null,
+        nodes: [...state.nodes, { id, x: action.x, y: action.y }],
+        selection: { type: 'node', id },
       }
+    }
     case 'SELECT':
       return { ...state, selection: action.target }
     case 'SET_MODE':
@@ -49,10 +51,12 @@ function reducer(state: GraphState, action: Action): GraphState {
           (e.from === action.to && e.to === from),
       )
       if (exists) return { ...state, lineDrawingFrom: null }
+      const id = uid()
       return {
         ...state,
-        edges: [...state.edges, { id: uid(), from, to: action.to }],
+        edges: [...state.edges, { id, from, to: action.to }],
         lineDrawingFrom: null,
+        selection: { type: 'edge', id },
       }
     }
     case 'CANCEL_LINE':
@@ -65,10 +69,12 @@ function reducer(state: GraphState, action: Action): GraphState {
           (e.from === action.to && e.to === action.from),
       )
       if (exists) return state
+      const id = uid()
       return {
         ...state,
-        edges: [...state.edges, { id: uid(), from: action.from, to: action.to }],
+        edges: [...state.edges, { id, from: action.from, to: action.to }],
         lineDrawingFrom: null,
+        selection: { type: 'edge', id },
       }
     }
     default:

@@ -13,11 +13,7 @@ function App() {
 
   const handleCanvasClick = (x: number, y: number) => {
     if (state.mode === 'default') {
-      if (state.selection) {
-        select(null)
-      } else {
-        addNode(x, y)
-      }
+      addNode(x, y)
     } else if (state.mode === 'line-drawing') {
       if (state.lineDrawingFrom) cancelLine()
     }
@@ -38,9 +34,8 @@ function App() {
   }
 
   const handleEdgeClick = (id: string) => {
-    if (state.mode === 'default') {
-      select({ type: 'edge', id })
-    }
+    if (state.lineDrawingFrom) cancelLine()
+    select({ type: 'edge', id })
   }
 
   const handleNodeDragConnect = (from: string, to: string) => {

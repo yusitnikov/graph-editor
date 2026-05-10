@@ -117,7 +117,15 @@ export function GraphCanvas({
     dragRef.current = { fromId: id, startX: x, startY: y, dragging: false }
   }
 
+  const handleNodeClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
   const handleEdgePointerDown = (e: React.PointerEvent, id: string) => {
+    e.stopPropagation()
+  }
+
+  const handleEdgeClick = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     onEdgeClick(id)
   }
@@ -162,9 +170,10 @@ export function GraphCanvas({
           <g
             key={edge.id}
             data-interactive="true"
-            style={{ cursor: mode === 'default' ? 'pointer' : 'default' }}
-            onPointerDown={(e) => mode === 'default' && handleEdgePointerDown(e, edge.id)}
-            onPointerEnter={() => mode === 'default' && setHoveredEdge(edge.id)}
+            style={{ cursor: 'pointer' }}
+            onPointerDown={(e) => handleEdgePointerDown(e, edge.id)}
+            onClick={(e) => handleEdgeClick(e, edge.id)}
+            onPointerEnter={() => setHoveredEdge(edge.id)}
             onPointerLeave={() => setHoveredEdge(null)}
           >
             {/* invisible wide hit area */}
@@ -232,6 +241,7 @@ export function GraphCanvas({
             strokeWidth={2}
             style={{ cursor: 'pointer' }}
             onPointerDown={(e) => handleNodePointerDown(e, node.id)}
+            onClick={handleNodeClick}
             onPointerEnter={() => !isDragging && setHoveredNode(node.id)}
             onPointerLeave={() => !isDragging && setHoveredNode(null)}
           />
